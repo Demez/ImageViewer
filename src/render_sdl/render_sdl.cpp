@@ -7,7 +7,6 @@
 #include <SDL.h>
 
 #include <unordered_map>
-#include "resources.hpp"
 
 
 SDL_Window*   gWindow      = nullptr;
