@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "util.h"
 
 
 enum PixelFormat
@@ -9,18 +10,17 @@ enum PixelFormat
 	FMT_NONE,
 
 	FMT_RGB8,
-	FMT_RGB16,
-
 	FMT_RGBA8,
-	FMT_RGBA16,
+
+	FMT_BGR8,
+	FMT_BGRA8,
 
 	COUNT,
 };
 
 
-struct ImageData
+struct ImageInfo
 {
-	std::vector< char > aData;
 	int                 aWidth;
 	int                 aHeight;
 	int                 aBitDepth;
@@ -32,21 +32,15 @@ struct ImageData
 class IImageFormat
 {
 public:
-	virtual ImageData* LoadImage( const std::string& path ) = 0;
-	virtual bool       CheckExt( const std::string& ext )   = 0;
+	virtual ImageInfo* LoadImage( const fs::path& path, std::vector< char >& srData ) = 0;
+	virtual bool       CheckExt( std::wstring_view ext )   = 0;
 };
 
 
-class ImageLoader
-{
-public:
-	ImageData*                   LoadImage( const std::string& path );
-	bool                         CheckExt( const std::string& ext );
-	void                         RegisterFormat( IImageFormat* spFormat );
-
-	std::vector< IImageFormat* > aFormats;
-};
+ImageInfo* ImageLoader_LoadImage( const fs::path& path, std::vector< char >& srData );
+bool       ImageLoader_SupportsImage( const fs::path& path );
+bool       ImageLoader_SupportsImageExt( const fs::path& ext );
+void       ImageLoader_RegisterFormat( IImageFormat* spFormat );
 
 
-ImageLoader& GetImageLoader();
 

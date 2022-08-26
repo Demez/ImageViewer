@@ -6,8 +6,8 @@ add_subdirectory( imgui )
 
 set( SRC_FILES
   src/main.cpp
-  src/watcher.cpp
-  src/watcher.h
+  src/folder_info.cpp
+  src/folder_info.h
   src/util.cpp
   src/util.h
 
@@ -27,6 +27,7 @@ set( SRC_FILES
   # Image Formats
   # src/formats/format_win32_wic.cpp
   src/formats/format_png.cpp
+  src/formats/format_jpeg.cpp
 )
 
 if( MSVC )
@@ -41,6 +42,11 @@ include( core.cmake )
 
 include_directories(
 	"thirdparty/libspng/spng"
+	"thirdparty/libjpeg-turbo"
+)
+
+link_directories(
+	"thirdparty/libjpeg-turbo/build"
 )
 
 add_executable( ImageViewer ${SRC_FILES} ${PLAT_FILES} )
@@ -49,7 +55,12 @@ target_link_libraries(
 	ImageViewer
 	SDL2
 	ImGui
+	turbojpeg-static
 )
+
+if( MSVC )
+	target_link_libraries( ImageViewer Shlwapi )
+endif()
 
 if ( ${CMAKE_BUILD_TYPE} NOT STREQUAL '' )
 	add_custom_command( TARGET ImageViewer POST_BUILD

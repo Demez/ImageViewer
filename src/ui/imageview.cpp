@@ -1,6 +1,7 @@
 #include <string>
 
 #include "imageview.h"
+#include "ui/imagelist.h"
 #include "util.h"
 #include "formats/imageloader.h"
 #include "render_sdl/render_sdl.h"
@@ -9,8 +10,8 @@
 #include "imgui.h"
 
 
-std::string   gImagePath;
-ImageData*    gpImageData = nullptr;
+fs::path      gImagePath;
+ImageInfo*    gpImageInfo = nullptr;
 ImageDrawInfo gDrawInfo;
 size_t        gImageHandle = 0;
 double        gZoomLevel   = 1.0f;
@@ -21,22 +22,23 @@ bool          gGrabbed     = false;
 
 
 constexpr double ZOOM_AMOUNT = 0.1;
+constexpr double ZOOM_MIN = 0.01;
 
 
 void UpdateZoom()
 {
 	// round it so we don't get something like 0.9999564598 or whatever instead of 1.0
-	gZoomLevel        = round( gZoomLevel * 100 ) / 100;
+	gZoomLevel        = std::max( ZOOM_MIN, round( gZoomLevel * 100 ) / 100 );
 
 	// recalculate draw width and height
-	gDrawInfo.aWidth  = (double)gpImageData->aWidth * gZoomLevel;
-	gDrawInfo.aHeight = (double)gpImageData->aHeight * gZoomLevel;
+	gDrawInfo.aWidth  = (double)gpImageInfo->aWidth * gZoomLevel;
+	gDrawInfo.aHeight = (double)gpImageInfo->aHeight * gZoomLevel;
 }
 
 
 void HandleWheelEvent( int scroll )
 {
-	if ( !gpImageData )
+	if ( !gpImageInfo )
 		return;
 
 	double factor = 1.0;
@@ -82,14 +84,14 @@ void HandleWheelEvent( int scroll )
 	double oldZoom = gZoomLevel;
 
 	// recalc gZoomLevel
-	gZoomLevel = (double)(gDrawInfo.aWidth * factor) / (double)gpImageData->aWidth;
+	gZoomLevel = (double)(std::max(1, gDrawInfo.aWidth) * factor) / (double)gpImageInfo->aWidth;
 
 	// round it so we don't get something like 0.9999564598 or whatever instead of 1.0
-	gZoomLevel = round( gZoomLevel * 100 ) / 100;
+	gZoomLevel = std::max( ZOOM_MIN, round( gZoomLevel * 100 ) / 100 );
 
 	// recalculate draw width and height
-	gDrawInfo.aWidth  = (double)gpImageData->aWidth * gZoomLevel;
-	gDrawInfo.aHeight = (double)gpImageData->aHeight * gZoomLevel;
+	gDrawInfo.aWidth  = (double)gpImageInfo->aWidth * gZoomLevel;
+	gDrawInfo.aHeight = (double)gpImageInfo->aHeight * gZoomLevel;
 	
 	// recalculate image position to keep image where cursor is
 	gDrawInfo.aX = mouseX - gZoomLevel / oldZoom * ( mouseX - gDrawInfo.aX );
@@ -99,7 +101,7 @@ void HandleWheelEvent( int scroll )
 
 void HandleMouseDrag( int xrel, int yrel )
 {
-	if ( !gpImageData )
+	if ( !gpImageInfo )
 		return;
 
 	gDrawInfo.aX += xrel;
@@ -166,14 +168,14 @@ void ImageView_HandleEvent( SDL_Event& srEvent )
 				case SDL_WINDOWEVENT_RESIZED:
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				{
-					if ( !gpImageData )
+					if ( !gpImageInfo )
 						return;
 
 					// int width, height;
 					// Render_GetWindowSize( width, height );
 					// 
-					// gDrawInfo.aX = ( width - gpImageData->aWidth ) / 2;
-					// gDrawInfo.aY = ( height - gpImageData->aHeight ) / 2;
+					// gDrawInfo.aX = ( width - gpImageInfo->aWidth ) / 2;
+					// gDrawInfo.aY = ( height - gpImageInfo->aHeight ) / 2;
 				}
 			}
 
@@ -185,47 +187,57 @@ void ImageView_HandleEvent( SDL_Event& srEvent )
 
 void ImageView_Draw()
 {
-	if ( !gpImageData )
+	if ( !gpImageInfo )
 		return;
 
 	// int width, height;
 	// Render_GetWindowSize( width, height );
 	// 
 	// ImageDrawInfo drawInfo;
-	// drawInfo.aX      = (width - gpImageData->aWidth)/2;
-	// drawInfo.aY      = (height - gpImageData->aHeight)/2;
-	// drawInfo.aWidth  = gpImageData->aWidth;
-	// drawInfo.aHeight = gpImageData->aHeight;
+	// drawInfo.aX      = (width - gpImageInfo->aWidth)/2;
+	// drawInfo.aY      = (height - gpImageInfo->aHeight)/2;
+	// drawInfo.aWidth  = gpImageInfo->aWidth;
+	// drawInfo.aHeight = gpImageInfo->aHeight;
 
-	Render_DrawImage( gpImageData, gDrawInfo );
+	Render_DrawImage( gpImageInfo, gDrawInfo );
 }
 
 
-bool ImageView_SetImage( const std::string& path )
+bool ImageView_SetImage( const fs::path& path )
 {
+	fs::path file = fs_clean_path( path );
+
 	// TODO: this is a slow blocking operation on the main thread
 	// async or move this to a image loader thread and use a callback for when it's loaded
-	ImageData* newImageData = nullptr;
-	if ( !(newImageData = GetImageLoader().LoadImage( path )) )
+	ImageInfo* newImageData = nullptr;
+	std::vector< char > data;
+	if ( !( newImageData = ImageLoader_LoadImage( file, data ) ) )
 		return false;
 
-	if ( gpImageData )
+	if ( gpImageInfo )
 		ImageView_RemoveImage();
 
-	gpImageData = newImageData;
+	gpImageInfo = newImageData;
 
-	gImageHandle = Render_LoadImage( gpImageData );
+	gImageHandle = Render_LoadImage( gpImageInfo, data );
 
 	// default zoom settings for now
 	int width, height;
 	Render_GetWindowSize( width, height );
 
-	gDrawInfo.aX      = ( width - gpImageData->aWidth ) / 2;
-	gDrawInfo.aY      = ( height - gpImageData->aHeight ) / 2;
-	gDrawInfo.aWidth  = gpImageData->aWidth;
-	gDrawInfo.aHeight = gpImageData->aHeight;
+	gDrawInfo.aX      = ( width - gpImageInfo->aWidth ) / 2;
+	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
+	gDrawInfo.aWidth  = gpImageInfo->aWidth;
+	gDrawInfo.aHeight = gpImageInfo->aHeight;
+
+	gImagePath        = file;
 
 	ImageView_FitInView();
+
+	// update image list
+	ImageList_SetPathFromFile( file );
+
+	Render_SetWindowTitle( L"Demez Image View - " + path.wstring() );
 
 	return true;
 }
@@ -233,16 +245,24 @@ bool ImageView_SetImage( const std::string& path )
 
 void ImageView_RemoveImage()
 {
-	if ( !gpImageData )
+	if ( !gpImageInfo )
 		return;
 
-	delete gpImageData;
+	Render_FreeImage( gpImageInfo );
+
+	delete gpImageInfo;
 }
 
 
 bool ImageView_HasImage()
 {
-	return gpImageData;
+	return gpImageInfo;
+}
+
+
+const fs::path& ImageView_GetImagePath()
+{
+	return gImagePath;
 }
 
 
@@ -273,8 +293,8 @@ void ImageView_ResetZoom()
 
 	gZoomLevel        = 1.0;
 
-	gDrawInfo.aWidth  = gpImageData->aWidth;
-	gDrawInfo.aHeight = gpImageData->aHeight;
+	gDrawInfo.aWidth  = gpImageInfo->aWidth;
+	gDrawInfo.aHeight = gpImageInfo->aHeight;
 }
 
 
@@ -294,8 +314,8 @@ void ImageView_FitInView( bool sScaleUp )
 	if ( sScaleUp )
 	{
 		auto factor = std::min(
-		  ( (float)width / (float)gpImageData->aWidth ),
-		  ( (float)height, (float)gpImageData->aHeight )
+		  ( (float)width / (float)gpImageInfo->aWidth ),
+		  ( (float)height, (float)gpImageInfo->aHeight )
 		);
 
 		gZoomLevel = factor;
@@ -305,11 +325,11 @@ void ImageView_FitInView( bool sScaleUp )
 	{
 		float factor[2] = { 1.f, 1.f };
 
-		if ( gpImageData->aWidth > width )
-			factor[ 0 ] = (float)width / (float)gpImageData->aWidth;
+		if ( gpImageInfo->aWidth > width )
+			factor[ 0 ] = (float)width / (float)gpImageInfo->aWidth;
 
-		if ( gpImageData->aHeight > height )
-			factor[ 1 ] = (float)height / (float)gpImageData->aHeight;
+		if ( gpImageInfo->aHeight > height )
+			factor[ 1 ] = (float)height / (float)gpImageInfo->aHeight;
 
 		gZoomLevel = std::min( factor[0], factor[1] );
 	}
@@ -329,21 +349,12 @@ bool CheckDragInput( const std::string& dragText )
 		return false;
 	}
 
-	std::string fileExt = fs_get_file_ext( dragText );
-
-	if ( fileExt.empty() )
+	if ( !ImageLoader_SupportsImage( dragText ) )
 	{
-		printf( "WARNING: [CheckDragInput] no file extension?: %s\n", dragText.c_str() );
-		return false;
-	}
-
-	if ( !GetImageLoader().CheckExt( fileExt ) )
-	{
-		printf( "WARNING: [CheckDragInput] unknown file extension: %s\n", fileExt.c_str() );
+		printf( "WARNING: [CheckDragInput] file not supported: %s\n", dragText.c_str() );
 		return false;
 	}
 
 	return true;
 }
-
 

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
+#include "util.h"
 
-struct ImageData;
+struct ImageInfo;
 typedef union SDL_Event;
 
 
@@ -23,17 +24,18 @@ enum ImageZoomType
 // - maybe for higher resolutions with an option of disabling some filter above a certain zoom level
 
 // might remove this HandleEvent later if i decide to try win32 api
-void   ImageView_HandleEvent( SDL_Event& srEvent );
-void   ImageView_Draw();
+void            ImageView_HandleEvent( SDL_Event& srEvent );
+void            ImageView_Draw();
 
-bool   ImageView_SetImage( const std::string& path );
-void   ImageView_RemoveImage();
-bool   ImageView_HasImage();
+bool            ImageView_SetImage( const fs::path& path );
+void            ImageView_RemoveImage();
+bool            ImageView_HasImage();
+const fs::path& ImageView_GetImagePath();
 
-void   ImageView_FitInView( bool sScaleUp = false );
-double ImageView_GetZoomLevel();
-void   ImageView_SetZoomLevel( double level );
-void   ImageView_ResetZoom();
+void            ImageView_FitInView( bool sScaleUp = false );
+double          ImageView_GetZoomLevel();
+void            ImageView_SetZoomLevel( double level );
+void            ImageView_ResetZoom();
 
 // ImageZoomType ImageView_GetZoomType();
 // ImageZoomType ImageView_SetZoomType();

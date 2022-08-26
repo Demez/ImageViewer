@@ -13,8 +13,8 @@ SDL_Window*   gWindow      = nullptr;
 SDL_Renderer* gRenderer    = nullptr;
 SDL_Surface*  gScreenSurface = nullptr;
 
-// std::unordered_map< ImageData*, SDL_Surface* > gImages;
-std::unordered_map< ImageData*, SDL_Texture* > gImages;
+// std::unordered_map< ImageInfo*, SDL_Surface* > gImageTextures;
+std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
 
 
 bool Render_Init()
@@ -78,68 +78,80 @@ void Render_Draw()
 }
 
 
-bool Render_LoadImage( ImageData* spData )
+bool Render_LoadImage( ImageInfo* spInfo, std::vector< char >& srData )
 {
-	auto find = gImages.find( spData );
+	auto find = gImageTextures.find( spInfo );
 	
 	// Image is already loaded
-	if ( find != gImages.end() )
+	if ( find != gImageTextures.end() )
 		return true;
 
-	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom(
-		spData->aData.data(), 
-		spData->aWidth,
-		spData->aHeight,
-		spData->aBitDepth,
+	int                 pitch  = spInfo->aWidth;
+	SDL_PixelFormatEnum sdlFmt = SDL_PIXELFORMAT_ABGR8888;
 
-		// TODO: actually do this properly
-		spData->aWidth * 4,
-		SDL_PIXELFORMAT_ABGR8888
+	if ( spInfo->aFormat == FMT_RGB8 )
+	{
+		sdlFmt = SDL_PIXELFORMAT_RGB24;
+		pitch *= 3;
+	}
+	else if ( spInfo->aFormat == FMT_BGR8 )
+	{
+		sdlFmt = SDL_PIXELFORMAT_BGR24;
+		pitch *= 3;
+	}
+	else
+	{
+		pitch *= 4;
+	}
+
+	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom(
+		srData.data(), 
+		spInfo->aWidth,
+		spInfo->aHeight,
+		spInfo->aBitDepth,
+		pitch,
+		sdlFmt
 	);
 
 	if ( surf == nullptr )
 		return false;
 
 	SDL_Texture* tex = SDL_CreateTextureFromSurface( gRenderer, surf );
+	SDL_FreeSurface( surf );
 
 	if ( tex == nullptr )
 	{
 		printf( "[Render] Failed to create texture from surface: %s\n", SDL_GetError() );
-		SDL_FreeSurface( surf );
 		return false;
 	}
 
-	// gImages[ spData ] = surf;
-	gImages[ spData ] = tex;
-
-	SDL_FreeSurface( surf );
+	// gImageTextures[ spInfo ] = surf;
+	gImageTextures[ spInfo ] = tex;
 
 	return true;
 }
 
 
-void Render_FreeImage( ImageData* spData )
+void Render_FreeImage( ImageInfo* spInfo )
 {
-	auto find = gImages.find( spData );
+	auto find = gImageTextures.find( spInfo );
 
 	// Image is not loaded
-	if ( find == gImages.end() )
+	if ( find == gImageTextures.end() )
 		return;
 
-	// SDL_Surface* surf = find->second;
+	SDL_DestroyTexture( find->second );
 
-	// SDL_FreeSurface( surf );
-
-	// uh remove from gImages???
+	gImageTextures.erase( spInfo );
 }
 
 
-void Render_DrawImage( ImageData* spData, const ImageDrawInfo& srDrawInfo )
+void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 {
-	auto find = gImages.find( spData );
+	auto find = gImageTextures.find( spInfo );
 
 	// Image is already loaded
-	if ( find == gImages.end() )
+	if ( find == gImageTextures.end() )
 		return;
 
 	// SDL_Surface* surf = find->second;
@@ -165,3 +177,8 @@ void Render_GetWindowSize( int& srWidth, int& srHeight )
 	SDL_GetWindowSize( gWindow, &srWidth, &srHeight );
 }
 
+
+void Render_SetWindowTitle( const std::wstring& srTitle )
+{
+	// SDL_SetWindowTitle( gWindow, (char*)srTitle.c_str() );
+}

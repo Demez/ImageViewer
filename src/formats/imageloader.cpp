@@ -5,57 +5,63 @@
 // TODO: maybe create some kind of plugin system for image loaders?
 // and create some sort of image loader priority system that users can reorder if custom plugins are used
 
+std::vector< IImageFormat* > gFormats;
 
-ImageLoader& GetImageLoader()
+
+ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& srData )
 {
-	static ImageLoader loader;
-	return loader;
-}
-
-
-ImageData* ImageLoader::LoadImage( const std::string& srPath )
-{
-	// HACK HACK
-	std::string path = srPath;
-
-	if ( srPath.starts_with( "file:///" ) )
-		path = srPath.substr( 8, srPath.length() - 8 );
-
-	if ( !fs_file_exists( path ) )
+	if ( !fs_file_exists( srPath.c_str() ) )
 	{
-		printf( "[ImageLoader] Image does not exist: \"%s\"\n", path.c_str() );
+		wprintf( L"[ImageLoader] Image does not exist: \"%s\"\n", srPath.c_str() );
 		return nullptr;
 	}
 
-	std::string fileExt = fs_get_file_ext( path );
+	std::wstring fileExt = fs_get_file_ext( srPath );
 	if ( fileExt.empty() )
 	{
-		printf( "[ImageLoader] Failed to get file extension: - %s\n", path.c_str() );
+		wprintf( L"[ImageLoader] Failed to get file extension: - %s\n", srPath.c_str() );
 		return nullptr;
 	}
 
-	for ( auto format: aFormats )
+	// fs::path fileExt = srPath.extension();
+
+	for ( auto format: gFormats )
 	{
-		if ( !format->CheckExt( fileExt ) )
+		if ( !format->CheckExt( fileExt.c_str() ) )
 			continue;
 
-		if ( auto image = format->LoadImage( path ) )
+		if ( auto image = format->LoadImage( srPath, srData ) )
 		{
-			printf( "[ImageLoader] Loaded Image: \"%s\"\n", path.c_str() );
+			wprintf( L"[ImageLoader] Loaded Image: \"%s\"\n", srPath.c_str() );
 			return image;
 		}
 	}
 
-	printf( "[ImageLoader] Failed to load image: \"%s\"\n", path.c_str() );
+	wprintf( L"[ImageLoader] Failed to load image: \"%s\"\n", srPath.c_str() );
 	return nullptr;
 }
 
 
-bool ImageLoader::CheckExt( const std::string& ext )
+bool ImageLoader_SupportsImage( const fs::path& path )
 {
-	for ( auto format: aFormats )
+	std::wstring ext = fs_get_file_ext( path );
+	// if ( !path.has_extension() )
+	// 	return false;
+	// 
+	// fs::path ext = path.extension();
+
+	if ( ext.empty() )
+		return false;
+
+	return ImageLoader_SupportsImageExt( ext );
+}
+
+
+bool ImageLoader_SupportsImageExt( const fs::path& ext )
+{
+	for ( auto format: gFormats )
 	{
-		if ( format->CheckExt( ext ) )
+		if ( format->CheckExt( ext.wstring() ) )
 			return true;
 	}
 
@@ -63,9 +69,9 @@ bool ImageLoader::CheckExt( const std::string& ext )
 }
 
 
-void ImageLoader::RegisterFormat( IImageFormat* spFormat )
+void ImageLoader_RegisterFormat( IImageFormat* spFormat )
 {
-	aFormats.push_back( spFormat );
+	gFormats.push_back( spFormat );
 }
 
 
