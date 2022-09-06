@@ -4,7 +4,6 @@
 #include "util.h"
 
 struct ImageInfo;
-typedef union SDL_Event;
 
 
 enum ImageZoomType
@@ -24,8 +23,12 @@ enum ImageZoomType
 // - maybe for higher resolutions with an option of disabling some filter above a certain zoom level
 
 // might remove this HandleEvent later if i decide to try win32 api
-void            ImageView_HandleEvent( SDL_Event& srEvent );
-void            ImageView_Draw();
+// void            ImageView_HandleEvent( SDL_Event& srEvent );
+
+// Events
+void            ImageView_EventMouseMotion( int xrel, int yrel );
+
+void            ImageView_Update();
 
 bool            ImageView_SetImage( const fs::path& path );
 void            ImageView_RemoveImage();

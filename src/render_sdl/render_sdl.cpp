@@ -1,7 +1,8 @@
-#include "render_sdl.h"
+#include "render.h"
+#include "platform.h"
 #include "formats/imageloader.h"
 
-#include "imgui_impl_sdl.h"
+#include "imgui_impl_win32.h"
 #include "imgui_impl_sdlrenderer.h"
 
 #include <SDL.h>
@@ -9,9 +10,8 @@
 #include <unordered_map>
 
 
-SDL_Window*   gWindow      = nullptr;
-SDL_Renderer* gRenderer    = nullptr;
-SDL_Surface*  gScreenSurface = nullptr;
+SDL_Renderer* gRenderer = nullptr;
+SDL_Window*   gWindow   = nullptr;
 
 // std::unordered_map< ImageInfo*, SDL_Surface* > gImageTextures;
 std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
@@ -19,29 +19,27 @@ std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
 
 bool Render_Init()
 {
-	SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS );
+	SDL_Init( SDL_INIT_VIDEO );
 
-	gWindow = SDL_CreateWindow( "demez imgui image viewer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_RESIZABLE );
-	if ( !gWindow )
+	void* window = Plat_GetWindow();
+	if ( window == nullptr )
 	{
-		printf( "Failed to create window: %s\n", SDL_GetError() );
+		printf( "Plat_GetWindow returned nullptr?\n" );
 		return false;
 	}
 
-	gScreenSurface = SDL_GetWindowSurface( gWindow );
-
+	if ( !( gWindow = SDL_CreateWindowFrom( window ) ) )
+	{
+		printf( "Failed to create SDL_Window from HWDN: %s\n", SDL_GetError() );
+		return false;
+	}
+	
 	if ( !(gRenderer = SDL_CreateRenderer( gWindow, -1, SDL_RENDERER_ACCELERATED )) )
 	{
 		printf( "Failed to create SDL_Renderer: %s\n", SDL_GetError() );
 		return false;
 	}
-
-	if ( !ImGui_ImplSDL2_InitForSDLRenderer( gWindow, gRenderer ) )
-	{
-		fputs( "Failed to init ImGui for SDL_Renderer\n", stderr );
-		return false;
-	}
-
+	
 	if ( !ImGui_ImplSDLRenderer_Init( gRenderer ) )
 	{
 		fputs( "Failed to init ImGui SDL_Renderer\n", stderr );
@@ -55,15 +53,14 @@ bool Render_Init()
 void Render_Shutdown()
 {
 	SDL_DestroyRenderer( gRenderer );
-	SDL_DestroyWindow( gWindow );
+	// SDL_DestroyWindow( gWindow );
 }
 
 
 void Render_NewFrame()
 {
-	ImGui_ImplSDL2_NewFrame();
 	ImGui_ImplSDLRenderer_NewFrame();
-
+	
 	SDL_SetRenderDrawColor( gRenderer, 48, 48, 48, 255 );
 	SDL_RenderClear( gRenderer );
 }
@@ -73,7 +70,7 @@ void Render_Draw()
 {
 	ImGui::Render();
 	ImGui_ImplSDLRenderer_RenderDrawData( ImGui::GetDrawData() );
-
+	
 	SDL_RenderPresent( gRenderer );
 }
 
@@ -165,20 +162,5 @@ void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 	};
 
 	SDL_RenderCopy( gRenderer, tex, nullptr, &dstRect );
-
-	// SDL_UpperBlit( surf, nullptr, gScreenSurface, nullptr );
-
-	// SDL_UpdateWindowSurface( gWindow );
 }
 
-
-void Render_GetWindowSize( int& srWidth, int& srHeight )
-{
-	SDL_GetWindowSize( gWindow, &srWidth, &srHeight );
-}
-
-
-void Render_SetWindowTitle( const std::wstring& srTitle )
-{
-	// SDL_SetWindowTitle( gWindow, (char*)srTitle.c_str() );
-}

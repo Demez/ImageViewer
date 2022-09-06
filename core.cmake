@@ -27,8 +27,6 @@ include_directories(
 	"src"
 )
 
-link_libraries( spng SDL2 )
-
 # Compiler/Platform specifc options
 if( MSVC )
 	set( SPNG_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/libspng/build/${CMAKE_BUILD_TYPE} )
@@ -44,7 +42,7 @@ if( MSVC )
 		_CRT_SECURE_NO_WARNINGS
 		_ALLOW_RUNTIME_LIBRARY_MISMATCH _ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH _ALLOW_MSC_VER_MISMATCH
 		_AMD64_ __x86_64 __amd64
-		UNICODE
+		UNICODE _UNICODE
 	)
 	
 	# Remove default warning level from CMAKE_CXX_FLAGS

@@ -1,10 +1,11 @@
 #include <string>
 
 #include "imageview.h"
+#include "platform.h"
 #include "ui/imagelist.h"
 #include "util.h"
 #include "formats/imageloader.h"
-#include "render_sdl/render_sdl.h"
+#include "render.h"
 
 #include <SDL.h>
 #include "imgui.h"
@@ -38,8 +39,10 @@ void UpdateZoom()
 
 void HandleWheelEvent( int scroll )
 {
-	if ( !gpImageInfo )
+	if ( !gpImageInfo || scroll == 0 )
 		return;
+
+	printf( "scroll: %d\n", scroll );
 
 	double factor = 1.0;
 
@@ -79,7 +82,7 @@ void HandleWheelEvent( int scroll )
 		factor = roundedZoom / gZoomLevel;
 
 	int mouseX, mouseY;
-	SDL_GetMouseState( &mouseX, &mouseY );
+	Plat_GetMousePos( mouseX, mouseY );
 
 	double oldZoom = gZoomLevel;
 
@@ -99,17 +102,29 @@ void HandleWheelEvent( int scroll )
 }
 
 
-void HandleMouseDrag( int xrel, int yrel )
+// -------------------------------------------------------------------
+
+
+void ImageView_EventMouseMotion( int xrel, int yrel )
 {
+	if ( !gGrabbed )
+		return;
+
+	auto& io = ImGui::GetIO();
+
+	// imgui window is being interacted with
+	if ( io.MouseDownOwned[ 0 ] )
+	{
+		gGrabbed = false;
+		return;
+	}
+
 	if ( !gpImageInfo )
 		return;
 
 	gDrawInfo.aX += xrel;
 	gDrawInfo.aY += yrel;
 }
-
-
-// -------------------------------------------------------------------
 
 
 void ImageView_HandleEvent( SDL_Event& srEvent )
@@ -139,19 +154,7 @@ void ImageView_HandleEvent( SDL_Event& srEvent )
 
 		case SDL_MOUSEMOTION:
 		{
-			if ( !gGrabbed )
-				return;
-
-			auto& io = ImGui::GetIO();
-
-			// imgui window is being interacted with
-			if ( io.MouseDownOwned[ 0 ] )
-			{
-				gGrabbed = false;
-				return;
-			}
-			
-			HandleMouseDrag( srEvent.motion.xrel, srEvent.motion.yrel );
+			ImageView_EventMouseMotion( srEvent.motion.xrel, srEvent.motion.yrel );
 			return;
 		}
 
@@ -185,10 +188,21 @@ void ImageView_HandleEvent( SDL_Event& srEvent )
 }
 
 
-void ImageView_Draw()
+void ImageView_Update()
 {
+	gGrabbed = Plat_IsKeyPressed( K_LBUTTON );
+
+	if ( gGrabbed )
+	{
+		int dx, dy;
+		Plat_GetMouseDelta( dx, dy );
+		ImageView_EventMouseMotion( dx, dy );
+	}
+
 	if ( !gpImageInfo )
 		return;
+
+	HandleWheelEvent( Plat_GetMouseScroll() );
 
 	// int width, height;
 	// Render_GetWindowSize( width, height );
@@ -223,7 +237,7 @@ bool ImageView_SetImage( const fs::path& path )
 
 	// default zoom settings for now
 	int width, height;
-	Render_GetWindowSize( width, height );
+	Plat_GetWindowSize( width, height );
 
 	gDrawInfo.aX      = ( width - gpImageInfo->aWidth ) / 2;
 	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
@@ -237,7 +251,7 @@ bool ImageView_SetImage( const fs::path& path )
 	// update image list
 	ImageList_SetPathFromFile( file );
 
-	Render_SetWindowTitle( L"Demez Image View - " + path.wstring() );
+	Plat_SetWindowTitle( L"Demez Image View - " + path.wstring() );
 
 	return true;
 }
@@ -282,7 +296,7 @@ void ImageView_SetZoomLevel( double level )
 void ImageView_ResetZoom()
 {
 	int width, height;
-	Render_GetWindowSize( width, height );
+	Plat_GetWindowSize( width, height );
 
 	int centerX = width / 2;
 	int centerY = height / 2;
@@ -292,6 +306,9 @@ void ImageView_ResetZoom()
 	gDrawInfo.aY      = centerY - 1 / gZoomLevel * ( centerY - gDrawInfo.aY );
 
 	gZoomLevel        = 1.0;
+
+	if ( !gpImageInfo )
+		return;
 
 	gDrawInfo.aWidth  = gpImageInfo->aWidth;
 	gDrawInfo.aHeight = gpImageInfo->aHeight;
@@ -308,7 +325,7 @@ void ImageView_FitInView( bool sScaleUp )
 	}
 
 	int width, height;
-	Render_GetWindowSize( width, height );
+	Plat_GetWindowSize( width, height );
 
 	// fit in the view, scaling up the image if needed
 	if ( sScaleUp )
@@ -340,21 +357,4 @@ void ImageView_FitInView( bool sScaleUp )
 	gDrawInfo.aY = ( height - gDrawInfo.aHeight ) / 2;
 }
 
-
-bool CheckDragInput( const std::string& dragText )
-{
-	if ( !dragText.starts_with( "file:///" ) )
-	{
-		printf( "WARNING: [CheckDragInput] unknown drag data type: %s\n", dragText.c_str() );
-		return false;
-	}
-
-	if ( !ImageLoader_SupportsImage( dragText ) )
-	{
-		printf( "WARNING: [CheckDragInput] file not supported: %s\n", dragText.c_str() );
-		return false;
-	}
-
-	return true;
-}
 

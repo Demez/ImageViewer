@@ -7,6 +7,8 @@
 // trollface
 namespace fs = std::filesystem;
 
+#define ARR_SIZE( arr ) ( sizeof( arr ) / sizeof( arr[ 0 ] ) )
+
 // ==============================================================================
 // Short Types
 
@@ -115,7 +117,4 @@ constexpr bool vec_contains( const std::vector< T >& vec, T item )
 // ==============================================================================
 // Other Functions
 
-void         sys_sleep( float ms );
-void         sys_browse_to_file( const fs::path& file );
-std::wstring sys_to_wstr( const char* spStr );
 

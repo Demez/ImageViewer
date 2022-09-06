@@ -1,5 +1,6 @@
 #include "util.h"
-#include "render_sdl/render_sdl.h"
+#include "args.h"
+#include "render.h"
 #include "ui/imageview.h"
 #include "ui/imagelist.h"
 
@@ -7,13 +8,7 @@
 #include <stdio.h>
 #include <vector>
 
-#define SDL_MAIN_HANDLED
-
 #include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_sdlrenderer.h"
-
-#include <SDL.h>
 
 
 void StyleImGui()
@@ -88,9 +83,16 @@ void StyleImGui()
 }
 
 
-int main( int argc, char* argv[] )
+int entry()
 {
 	ImGui::CreateContext();
+
+	if ( !Plat_Init() )
+	{
+		printf( "Failed to init platform!!\n" );
+		ImGui::DestroyContext();
+		return 1;
+	}
 
 	StyleImGui();
 
@@ -98,121 +100,118 @@ int main( int argc, char* argv[] )
 	{
 		printf( "Failed to init Renderer!!\n" );
 		ImGui::DestroyContext();
+		Plat_Shutdown();
 		return 1;
 	}
 
-	// enable drag and drop in SDL2 (not very good as it just accepts everything, hmm)
-	SDL_EventState( SDL_DROPFILE, SDL_ENABLE );
-
-	bool                     running = true;
-	std::vector< SDL_Event > aEvents;
-
-	ImGuiIO&                 io = ImGui::GetIO();
-
-	if ( argc > 1 )
+	if ( Args_Count() > 1 )
 	{
-		ImageView_SetImage( argv[ 1 ] );
+		ImageView_SetImage( Args_Get( 1 ) );
 	}
 
-	while ( running )
+	while ( Plat_WindowOpen() )
 	{
-		SDL_PumpEvents();
+		Plat_Update();
 
-		// get total event count first
-		int eventCount = SDL_PeepEvents( nullptr, 0, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT );
-
-		// resize event vector with events found (probably bad to do every frame?)
-		aEvents.resize( eventCount );
-
-		// fill event vector with events found
-		SDL_PeepEvents( aEvents.data(), eventCount, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT );
-
-		for ( int i = 0; i < eventCount; i++ )
-		{
-			SDL_Event& aEvent = aEvents[ i ];
-			ImGui_ImplSDL2_ProcessEvent( &aEvent );
-			ImageView_HandleEvent( aEvent );
-			ImageList_HandleEvent( aEvent );
-
-			switch ( aEvent.type )
-			{
-				case SDL_QUIT:
-				{
-					running = false;
-					break;
-				}
-
-				case SDL_DROPBEGIN:
-				{
-					printf( "drop begin\n" );
-					break;
-				}
-
-				case SDL_DROPFILE:
-				{
-					ImageView_SetImage( sys_to_wstr( aEvent.drop.file ) );
-					printf( "drop file\n" );
-					break;
-				}
-			}
-		}
+		if ( Plat_IsKeyDown( K_RIGHT ) )
+			ImageList_LoadNextImage();
+		
+		else if ( Plat_IsKeyDown( K_LEFT ) )
+			ImageList_LoadPrevImage();
 
 		Render_NewFrame();
 		
 		ImageList_Update();
-		ImageView_Draw();
-
+		ImageView_Update();
+		
 		// ----------------------------------------------------------------------
 		// UI Building
-
+		
 		ImGui::NewFrame();
-
+		
 		// Zoom Display
 		char buf[ 16 ] = { '\0' };
 		snprintf( buf, 16, "%.0f%%\0", ImageView_GetZoomLevel() * 100 );
-
+		
 		ImGui::Begin( "Zoom Level", nullptr, ImGuiWindowFlags_NoTitleBar );
-
-
+		
+		
 		ImGui::TextUnformatted( buf );
-
+		
 		if ( ImGui::Button( "Fit" ) )
 		{
 			ImageView_FitInView();
 		}
-
+		
 		if ( ImGui::Button( "100%" ) )
 		{
 			ImageView_ResetZoom();
 		}
-
+		
 		ImGui::End();
-
+		
 		// Context Menu
 		if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
 		{
 			if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
 			{
-				sys_browse_to_file( ImageView_GetImagePath() );
+				Plat_BrowseToFile( ImageView_GetImagePath() );
 			}
-
+		
 			ImGui::EndPopup();
 		}
-
+		
 		// Temp
 		// ImGui::ShowDemoWindow();
-
+		
 		// ----------------------------------------------------------------------
 		// Rendering
-
+		
 		Render_Draw();
 
-		SDL_Delay( 1 );
+		Plat_Sleep( 0.5 );
 	}
 
 	Render_Shutdown();
 
 	ImGui::DestroyContext();
 
+	Plat_Shutdown();
+
 	return 0;
 }
+
+
+#if 0 //def _WIN32
+#include <Windows.h>
+
+int wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nShowCmd )
+{
+	int     argc;
+	LPWSTR* argv = CommandLineToArgvW( pCmdLine, &argc );
+
+	Args_Init( argc, argv );
+
+	// Plat_Win32Init( hInstance, hPrevInstance, nShowCmd );
+
+	return entry();
+}
+#elif defined( _WIN32 )
+
+int wmain( int argc, wchar_t* argv[], wchar_t* envp[] )
+{
+	Args_Init( argc, argv );
+
+	return entry();
+}
+
+#else
+
+int main( int argc, char* argv[] )
+{
+	Args_Init( argc, argv );
+
+	return entry();
+}
+
+#endif

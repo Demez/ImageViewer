@@ -25,6 +25,4 @@ bool Render_LoadImage( ImageInfo* spInfo, std::vector< char >& srData );
 void Render_FreeImage( ImageInfo* spInfo );
 void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
 
-void Render_GetWindowSize( int& srWidth, int& srHeight );
-void Render_SetWindowTitle( const std::wstring& srTitle );
 

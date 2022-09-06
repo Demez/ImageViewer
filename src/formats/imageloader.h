@@ -29,11 +29,15 @@ struct ImageInfo
 };
 
 
+// TODO:
+// - add a header check function
+// - add a struct for image data to support animations
 class IImageFormat
 {
 public:
 	virtual ImageInfo* LoadImage( const fs::path& path, std::vector< char >& srData ) = 0;
 	virtual bool       CheckExt( std::wstring_view ext )   = 0;
+	// virtual bool       CheckHeader( const fs::path& path )   = 0;
 };
 
 
@@ -41,6 +45,4 @@ ImageInfo* ImageLoader_LoadImage( const fs::path& path, std::vector< char >& srD
 bool       ImageLoader_SupportsImage( const fs::path& path );
 bool       ImageLoader_SupportsImageExt( const fs::path& ext );
 void       ImageLoader_RegisterFormat( IImageFormat* spFormat );
-
-
 
