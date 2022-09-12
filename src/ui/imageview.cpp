@@ -1,5 +1,8 @@
 #include <string>
+#include <thread>
+#include <condition_variable>
 
+#include "args.h"
 #include "imageview.h"
 #include "platform.h"
 #include "ui/imagelist.h"
@@ -9,6 +12,7 @@
 
 #include <SDL.h>
 #include "imgui.h"
+//#include "async/async.h"
 
 
 fs::path      gImagePath;
@@ -37,10 +41,11 @@ void UpdateZoom()
 }
 
 
-void HandleWheelEvent( int scroll )
+// returns if there was any scroll change
+bool HandleWheelEvent( int scroll )
 {
 	if ( !gpImageInfo || scroll == 0 )
-		return;
+		return false;
 
 	printf( "scroll: %d\n", scroll );
 
@@ -51,7 +56,7 @@ void HandleWheelEvent( int scroll )
 	{
 		// max zoom level
 		if ( gZoomLevel >= 100.0 )
-			return;
+			return false;
 
 		factor += ZOOM_AMOUNT;
 	}
@@ -59,7 +64,7 @@ void HandleWheelEvent( int scroll )
 	{
 		// min zoom level
 		if ( gZoomLevel <= 0.01 )
-			return;
+			return false;
 
 		factor -= ZOOM_AMOUNT;
 	}
@@ -99,6 +104,8 @@ void HandleWheelEvent( int scroll )
 	// recalculate image position to keep image where cursor is
 	gDrawInfo.aX = mouseX - gZoomLevel / oldZoom * ( mouseX - gDrawInfo.aX );
 	gDrawInfo.aY = mouseY - gZoomLevel / oldZoom * ( mouseY - gDrawInfo.aY );
+
+	return true;
 }
 
 
@@ -127,69 +134,10 @@ void ImageView_EventMouseMotion( int xrel, int yrel )
 }
 
 
-void ImageView_HandleEvent( SDL_Event& srEvent )
+bool ImageView_Update()
 {
-	switch ( srEvent.type )
-	{
-		case SDL_MOUSEBUTTONDOWN:
-		{
-			// check to make sure we aren't interacting with any imgui windows
-			// MouseDownOwned
+	bool shouldDraw = false;
 
-			// auto& io = ImGui::GetIO();
-			// 
-			// // imgui window is being interacted with
-			// if ( io.MouseDownOwned[ 0 ] )
-			// 	return;
-
-			gGrabbed = true;
-			return;
-		}
-
-		case SDL_MOUSEBUTTONUP:
-		{
-			gGrabbed = false;
-			return;
-		}
-
-		case SDL_MOUSEMOTION:
-		{
-			ImageView_EventMouseMotion( srEvent.motion.xrel, srEvent.motion.yrel );
-			return;
-		}
-
-		case SDL_MOUSEWHEEL:
-		{
-			HandleWheelEvent( srEvent.wheel.y );
-			return;
-		}
-
-		case SDL_WINDOWEVENT:
-		{
-			switch ( srEvent.window.event )
-			{
-				case SDL_WINDOWEVENT_RESIZED:
-				case SDL_WINDOWEVENT_SIZE_CHANGED:
-				{
-					if ( !gpImageInfo )
-						return;
-
-					// int width, height;
-					// Render_GetWindowSize( width, height );
-					// 
-					// gDrawInfo.aX = ( width - gpImageInfo->aWidth ) / 2;
-					// gDrawInfo.aY = ( height - gpImageInfo->aHeight ) / 2;
-				}
-			}
-
-			return;
-		}
-	}
-}
-
-
-void ImageView_Update()
-{
 	gGrabbed = Plat_IsKeyPressed( K_LBUTTON );
 
 	if ( gGrabbed )
@@ -197,41 +145,43 @@ void ImageView_Update()
 		int dx, dy;
 		Plat_GetMouseDelta( dx, dy );
 		ImageView_EventMouseMotion( dx, dy );
+		shouldDraw = true;
 	}
 
+	// if window resized and zoom mode set to ImageZoom_FitInView, refit the image
+	// probably use a callback for this? idk
+
 	if ( !gpImageInfo )
-		return;
+		return false;
 
-	HandleWheelEvent( Plat_GetMouseScroll() );
+	shouldDraw |= HandleWheelEvent( Plat_GetMouseScroll() );
 
-	// int width, height;
-	// Render_GetWindowSize( width, height );
-	// 
-	// ImageDrawInfo drawInfo;
-	// drawInfo.aX      = (width - gpImageInfo->aWidth)/2;
-	// drawInfo.aY      = (height - gpImageInfo->aHeight)/2;
-	// drawInfo.aWidth  = gpImageInfo->aWidth;
-	// drawInfo.aHeight = gpImageInfo->aHeight;
-
-	Render_DrawImage( gpImageInfo, gDrawInfo );
+	return shouldDraw;
 }
 
 
-bool ImageView_SetImage( const fs::path& path )
+void ImageView_Draw()
 {
-	fs::path file = fs_clean_path( path );
+	if ( gpImageInfo )
+		Render_DrawImage( gpImageInfo, gDrawInfo );
+}
+
+
+void ImageView_SetImageInternal( const fs::path& path )
+{
+	fs::path            file         = fs_clean_path( path );
 
 	// TODO: this is a slow blocking operation on the main thread
 	// async or move this to a image loader thread and use a callback for when it's loaded
-	ImageInfo* newImageData = nullptr;
+	ImageInfo*          newImageData = nullptr;
 	std::vector< char > data;
 	if ( !( newImageData = ImageLoader_LoadImage( file, data ) ) )
-		return false;
+		return;
 
 	if ( gpImageInfo )
 		ImageView_RemoveImage();
 
-	gpImageInfo = newImageData;
+	gpImageInfo  = newImageData;
 
 	gImageHandle = Render_LoadImage( gpImageInfo, data );
 
@@ -252,8 +202,13 @@ bool ImageView_SetImage( const fs::path& path )
 	ImageList_SetPathFromFile( file );
 
 	Plat_SetWindowTitle( L"Demez Image View - " + path.wstring() );
+}
 
-	return true;
+
+void ImageView_SetImage( const fs::path& path )
+{
+	// static bool threaded = !Args_Has( _T("-no-threading") );
+	ImageView_SetImageInternal( path );
 }
 
 

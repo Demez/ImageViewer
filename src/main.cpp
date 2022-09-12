@@ -1,3 +1,4 @@
+#include "main.h"
 #include "util.h"
 #include "args.h"
 #include "render.h"
@@ -83,6 +84,72 @@ void StyleImGui()
 }
 
 
+bool gShouldDraw = true;
+
+
+void Main_ShouldDrawWindow( bool draw )
+{
+	gShouldDraw |= draw;
+}
+
+
+void Main_WindowDraw()
+{
+	Render_NewFrame();
+
+	ImageView_Draw();
+
+	// ----------------------------------------------------------------------
+	// UI Building
+
+	ImGui::NewFrame();
+
+	// Zoom Display
+	char buf[ 16 ] = { '\0' };
+	snprintf( buf, 16, "%.0f%%\0", ImageView_GetZoomLevel() * 100 );
+
+	ImGui::Begin( "Zoom Level", nullptr, ImGuiWindowFlags_NoTitleBar );
+
+	ImGui::TextUnformatted( buf );
+
+	if ( ImGui::Button( "Fit" ) )
+	{
+		ImageView_FitInView();
+	}
+
+	if ( ImGui::Button( "100%" ) )
+	{
+		ImageView_ResetZoom();
+	}
+
+	ImGui::End();
+
+	// Context Menu
+	if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
+	{
+		if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
+		{
+			Plat_BrowseToFile( ImageView_GetImagePath() );
+		}
+
+		// Copy Image (to Clipboard)
+		// Copy Image Data
+		// Properties
+		// Settings
+
+		ImGui::EndPopup();
+	}
+
+	// Temp
+	// ImGui::ShowDemoWindow();
+
+	// ----------------------------------------------------------------------
+	// Rendering
+
+	Render_Draw();
+}
+
+
 int entry()
 {
 	ImGui::CreateContext();
@@ -114,62 +181,26 @@ int entry()
 		Plat_Update();
 
 		if ( Plat_IsKeyDown( K_RIGHT ) )
+		{
 			ImageList_LoadNextImage();
-		
-		else if ( Plat_IsKeyDown( K_LEFT ) )
-			ImageList_LoadPrevImage();
+			gShouldDraw = true;
+		}
 
-		Render_NewFrame();
-		
-		ImageList_Update();
-		ImageView_Update();
-		
-		// ----------------------------------------------------------------------
-		// UI Building
-		
-		ImGui::NewFrame();
-		
-		// Zoom Display
-		char buf[ 16 ] = { '\0' };
-		snprintf( buf, 16, "%.0f%%\0", ImageView_GetZoomLevel() * 100 );
-		
-		ImGui::Begin( "Zoom Level", nullptr, ImGuiWindowFlags_NoTitleBar );
-		
-		
-		ImGui::TextUnformatted( buf );
-		
-		if ( ImGui::Button( "Fit" ) )
+		else if ( Plat_IsKeyDown( K_LEFT ) )
 		{
-			ImageView_FitInView();
+			ImageList_LoadPrevImage();
+			gShouldDraw = true;
 		}
-		
-		if ( ImGui::Button( "100%" ) )
-		{
-			ImageView_ResetZoom();
-		}
-		
-		ImGui::End();
-		
-		// Context Menu
-		if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
-		{
-			if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
-			{
-				Plat_BrowseToFile( ImageView_GetImagePath() );
-			}
-		
-			ImGui::EndPopup();
-		}
-		
-		// Temp
-		// ImGui::ShowDemoWindow();
-		
-		// ----------------------------------------------------------------------
-		// Rendering
-		
-		Render_Draw();
+
+		// shouldDraw |= ImageList_Update();
+		gShouldDraw |= ImageView_Update();
+
+		// if ( gShouldDraw )
+			Main_WindowDraw();
 
 		Plat_Sleep( 0.5 );
+
+		gShouldDraw = false;
 	}
 
 	Render_Shutdown();

@@ -9,8 +9,9 @@ struct ImageInfo;
 enum ImageZoomType
 {
 	ImageZoom_Default,
-	ImageZoom_Fit,
-	ImageZoom_FitScaleUp,
+	// ImageZoom_Fit,
+	// ImageZoom_FitScaleUp,
+	ImageZoom_FitInView,
 	ImageZoom_Free,
 };
 
@@ -28,9 +29,10 @@ enum ImageZoomType
 // Events
 void            ImageView_EventMouseMotion( int xrel, int yrel );
 
-void            ImageView_Update();
+bool            ImageView_Update();
+void            ImageView_Draw();
 
-bool            ImageView_SetImage( const fs::path& path );
+void            ImageView_SetImage( const fs::path& path );
 void            ImageView_RemoveImage();
 bool            ImageView_HasImage();
 const fs::path& ImageView_GetImagePath();

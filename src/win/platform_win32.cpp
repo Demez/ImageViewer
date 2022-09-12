@@ -1,6 +1,7 @@
 #include "platform.h"
 #include "util.h"
 #include "ui/imageview.h"
+#include "main.h"
 #include "imgui_impl_win32.h"
 
 #include <Windows.h>
@@ -114,8 +115,27 @@ const uchar* Plat_GetError()
 	return message;
 }
 
-// uh
-#define WM_OPENFILES ( WM_USER + 1 )
+
+#if 0
+bool RawInput_Init()
+{
+	RAWINPUTDEVICE Rid[ 1 ];
+
+	Rid[ 0 ].usUsagePage = 0x01;            // HID_USAGE_PAGE_GENERIC
+	Rid[ 0 ].usUsage     = 0x02;            // HID_USAGE_GENERIC_MOUSE
+	Rid[ 0 ].dwFlags     = RIDEV_NOLEGACY;  // adds mouse and also ignores legacy mouse messages
+	// Rid[ 0 ].hwndTarget  = gHWND;
+	Rid[ 0 ].hwndTarget  = 0;
+
+	if ( RegisterRawInputDevices( Rid, 1, sizeof( Rid[ 0 ] ) ) == FALSE )
+	{
+		fprintf( stderr, "Failed to create window, %ws\n", Plat_GetError() );
+		return false;
+	}
+	return true;
+}
+#endif
+
 
 extern IMGUI_API LRESULT ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
@@ -135,13 +155,32 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		{
 			gMousePos[ 0 ]  = GET_X_LPARAM( lParam );
 			gMousePos[ 1 ]  = GET_Y_LPARAM( lParam );
+			Main_ShouldDrawWindow();
 
 			break;
 		}
+#if 0
+		case WM_INPUT:
+		{
+			RAWINPUT  input;
+			UINT      szData = sizeof( input ), szHeader = sizeof( RAWINPUTHEADER );
+			HRAWINPUT handle = reinterpret_cast< HRAWINPUT >( lParam );
+
+			GetRawInputData( handle, RID_INPUT, &input, &szData, szHeader );
+			if ( input.header.dwType == RIM_TYPEMOUSE )
+			{
+				// Here input.data.mouse.ulRawButtons is 0 at all times.
+			}
+
+			printf( "WM_INPUT\n" );
+			break;
+		}
+#endif
 		case WM_MOUSEWHEEL:
 		{
 			WORD fwKeys  = GET_KEYSTATE_WPARAM( wParam );
 			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam );
+			Main_ShouldDrawWindow();
 
 			break;
 		}
@@ -150,7 +189,7 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		{
 			SetKeyState( VK_LBUTTON, true );
 			break;						  
-		}								  
+		}
 		case WM_MBUTTONDOWN:			  
 		{								  
 			SetKeyState( VK_MBUTTON, true );
@@ -190,15 +229,16 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		}
 
-		case WM_OPENFILES:
-		{
-			//printf( "WM_OPENFILES (custom)\n" );
-			break;
-		}
-
 		case WM_SETCURSOR:
 		{
 			//printf( "uMsg: WM_SETCURSOR\n" );
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			ImGui_ImplWin32_NewFrame();
+			Main_WindowDraw();
 			break;
 		}
 
@@ -276,7 +316,7 @@ bool Plat_Init()
 	wc.hCursor       = LoadCursor( NULL, IDC_ARROW );
 	wc.hIcon         = LoadIcon( NULL, IDI_APPLICATION );
 	wc.hIconSm       = LoadIcon( 0, IDI_APPLICATION );
-	wc.hbrBackground = (HBRUSH)GetStockObject( DKGRAY_BRUSH );  // TODO: remove me
+	// wc.hbrBackground = (HBRUSH)GetStockObject( DKGRAY_BRUSH );  // TODO: remove me
 	wc.style         = CS_HREDRAW | CS_VREDRAW;  // redraw if size changes
 	wc.lpszClassName = L"demez_imgviewer";
 	wc.lpszMenuName  = 0;
@@ -315,7 +355,7 @@ bool Plat_Init()
 
 	if ( !gHWND )
 	{
-		fprintf( stderr, "Failed to create window, %Ls\n", Plat_GetError() );
+		fprintf( stderr, "Failed to create window, %ws\n", Plat_GetError() );
 		return false;
 	}
 
@@ -329,6 +369,11 @@ bool Plat_Init()
 		fputs( "Failed to init ImGui for Win32\n", stderr );
 		return false;
 	}
+
+	// if ( !RawInput_Init() )
+	// {
+	// 	return false;
+	// }
 
 	return true;
 }
@@ -379,10 +424,19 @@ void* Plat_GetWindow()
 void Plat_GetWindowSize( int& srWidth, int& srHeight )
 {
 	RECT rect;
-	GetWindowRect( gHWND, &rect );
+	// GetWindowRect( gHWND, &rect );
+	GetClientRect( gHWND, &rect );
+
+	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowinfo
+	WINDOWINFO windowInfo;
+	windowInfo.cbSize = sizeof( WINDOWINFO );
+	GetWindowInfo( gHWND, &windowInfo );
 
 	srWidth  = rect.right - rect.left;
 	srHeight = rect.bottom - rect.top;
+
+	// srWidth  = windowInfo.rcClient.right - windowInfo.rcClient.left;
+	// srHeight = windowInfo.rcClient.bottom - windowInfo.rcClient.top;
 }
 
 
