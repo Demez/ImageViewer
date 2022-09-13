@@ -9,6 +9,7 @@
 static fs::path                gCurrentDir;
 static std::vector< fs::path > gImages;
 static size_t                  gIndex;
+static FileSort                gSortMode;
 
 
 struct ImageListElement
@@ -16,30 +17,27 @@ struct ImageListElement
 };
 
 
-void ImageList_HandleEvent( SDL_Event& srEvent )
-{
-	switch ( srEvent.type )
-	{
-		case SDL_KEYDOWN:
-		{
-			if ( srEvent.key.keysym.sym == SDLK_RIGHT )
-			{
-				ImageList_LoadNextImage();
-			}
-			else if ( srEvent.key.keysym.sym == SDLK_LEFT )
-			{
-				ImageList_LoadPrevImage();
-			}
-
-			return;
-		}
-	}
-}
-
 
 void ImageList_Update()
 {
-	// const Uint8* keyboardState = SDL_GetKeyboardState( nullptr );
+}
+
+
+void ImageList_SetSortMode( FileSort sortMode )
+{
+	if ( sortMode > FileSort_Count )
+	{
+		printf( "ImageList: Warning - tried to set an invalid file sort mode\n" );
+		return;
+	}
+
+	gSortMode = sortMode;
+}
+
+
+FileSort ImageList_GetSortMode()
+{
+	return gSortMode;
 }
 
 
@@ -74,8 +72,19 @@ void ImageList_SetPath( const fs::path& srPath )
 }
 
 
+bool ImageList_InFolder()
+{
+	return !gCurrentDir.empty();
+}
+
+
 void ImageList_LoadFiles()
 {
+	if ( gCurrentDir.empty() )
+		return;
+
+	wprintf( L"ImageList: Loading files in directory: %s\n", gCurrentDir.c_str() );
+
 	gImages.clear();
 
 	// TODO: maybe move this somewhere else later, for win32 folder view sorting support
@@ -100,16 +109,23 @@ void ImageList_LoadFiles()
 	}
 
 	fs_read_close( dir );
+
+	wprintf( L"ImageList: Finished Loading files in directory: %s\n", gCurrentDir.c_str() );
 }
 
 
-void ImageList_LoadPrevImage()
+void ImageList_SortFiles()
+{
+}
+
+
+bool ImageList_LoadPrevImage()
 {
 	if ( gImages.empty() )
-		return;
+		return false;
 
 	if ( gImages.size() == 1 )
-		return;
+		return false;
 
 	if ( gIndex == 0 )
 		gIndex = gImages.size()-1;
@@ -117,16 +133,17 @@ void ImageList_LoadPrevImage()
 		gIndex--;
 
 	ImageView_SetImage( gImages[ gIndex ] );
+	return true;
 }
 
 
-void ImageList_LoadNextImage()
+bool ImageList_LoadNextImage()
 {
 	if ( gImages.empty() )
-		return;
+		return false;
 
 	if ( gImages.size() == 1 )
-		return;
+		return false;
 
 	gIndex++;
 
@@ -134,6 +151,20 @@ void ImageList_LoadNextImage()
 		gIndex = 0;
 
 	ImageView_SetImage( gImages[ gIndex ] );
+	return true;
 }
 
+
+void ImageList_RemoveItem( const fs::path& srFile )
+{
+	size_t index = vec_index( gImages, srFile );
+
+	if ( index == SIZE_MAX )
+	{
+		wprintf( L"ImageList: File not in image list: %s\n", srFile.c_str() );
+		return;
+	}
+
+	vec_remove_index( gImages, index );
+}
 

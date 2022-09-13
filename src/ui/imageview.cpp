@@ -139,8 +139,7 @@ bool ImageView_Update()
 
 	if ( Plat_IsKeyDown( K_DELETE ) )
 	{
-		Plat_DeleteFile( gImagePath );
-		ImageList_LoadNextImage();
+		ImageView_DeleteImage();
 		return false;
 	}
 
@@ -232,6 +231,19 @@ void ImageView_RemoveImage()
 bool ImageView_HasImage()
 {
 	return gpImageInfo;
+}
+
+
+void ImageView_DeleteImage()
+{
+	if ( !gpImageInfo )
+		return;
+
+	Plat_DeleteFile( gImagePath );
+	ImageList_RemoveItem( gImagePath );
+
+	if ( !ImageList_LoadNextImage() )
+		ImageView_RemoveImage();
 }
 
 

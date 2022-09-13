@@ -5,13 +5,34 @@
 
 union SDL_Event;
 
-void ImageList_HandleEvent( SDL_Event& srEvent );
-void ImageList_Update();
+enum FileSort : u8
+{
+	FileSort_System,
+	FileSort_AZ,
+	FileSort_ZA,
+	FileSort_DateModNewest,
+	FileSort_DateModOldest,
+	FileSort_DateCreatedNewest,
+	FileSort_DateCreatedOldest,
+	FileSort_SizeLargest,
+	FileSort_SizeSmallest,
 
-void ImageList_SetPathFromFile( const fs::path& srFile );
-void ImageList_SetPath( const fs::path& srPath );
-void ImageList_LoadFiles();
+	FileSort_Count
+};
 
-void ImageList_LoadPrevImage();
-void ImageList_LoadNextImage();
+void     ImageList_Update();
 
+void     ImageList_SetSortMode( FileSort sortMode );
+FileSort ImageList_GetSortMode();
+
+void     ImageList_SetPathFromFile( const fs::path& srFile );
+void     ImageList_SetPath( const fs::path& srPath );
+bool     ImageList_InFolder();
+
+void     ImageList_LoadFiles();
+void     ImageList_SortFiles();
+
+bool     ImageList_LoadPrevImage();
+bool     ImageList_LoadNextImage();
+
+void     ImageList_RemoveItem( const fs::path& srFile );

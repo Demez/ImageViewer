@@ -144,6 +144,71 @@ void Main_ShouldDrawWindow( bool draw )
 }
 
 
+void Main_VoidContextMenu()
+{
+	if ( !ImGui::BeginPopupContextVoid( "main ctx menu" ) )
+		return;
+
+	if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
+	{
+		Plat_BrowseToFile( ImageView_GetImagePath() );
+	}
+
+	if ( ImGui::MenuItem( "Copy Image", nullptr, false, false ) )
+	{
+	}
+
+	if ( ImGui::MenuItem( "Copy Image Data", nullptr, false, false ) )
+	{
+	}
+
+	if ( ImGui::MenuItem( "Undo", nullptr, false, Plat_CanUndo() ) )
+	{
+		Plat_Undo();
+	}
+
+	if ( ImGui::MenuItem( "Redo", nullptr, false, Plat_CanRedo() ) )
+	{
+		Plat_Redo();
+	}
+
+	if ( ImGui::MenuItem( "Delete", nullptr, false, ImageView_HasImage() ) )
+	{
+		ImageView_DeleteImage();
+	}
+
+	if ( ImGui::MenuItem( "File Info", nullptr, false, false ) )
+	{
+	}
+
+	if ( ImGui::MenuItem( "File Properties", nullptr, false, ImageView_HasImage() ) )
+	{
+		// TODO: create our own imgui file properties for more info
+		Plat_OpenFileProperties( ImageView_GetImagePath() );
+	}
+
+	ImGui::Separator();
+
+	if ( ImGui::BeginMenu( "Sort Mode" ) )
+	{
+		ImGui::EndMenu();
+	}
+
+	if ( ImGui::MenuItem( "Reload Folder", nullptr, false, ImageList_InFolder() ) )
+	{
+		ImageList_LoadFiles();
+	}
+
+	ImGui::Separator();
+
+	if ( ImGui::MenuItem( "Settings", nullptr, false ) )
+	{
+	}
+
+	ImGui::EndPopup();
+}
+
+
 void Main_WindowDraw()
 {
 	if ( !gCanDraw )
@@ -179,37 +244,8 @@ void Main_WindowDraw()
 	ImGui::End();
 
 	// Context Menu
-	if ( Plat_WindowFocused() )
-	{
-		if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
-		{
-			if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
-			{
-				Plat_BrowseToFile( ImageView_GetImagePath() );
-			}
-
-			// Copy Image (to Clipboard)
-			// Copy Image Data
-
-			if ( ImGui::MenuItem( "File Info", nullptr, false, ImageView_HasImage() ) )
-			{
-			}
-
-			if ( ImGui::MenuItem( "File Properties", nullptr, false, ImageView_HasImage() ) )
-			{
-				// TODO: create our own imgui file properties for more info
-				Plat_OpenFileProperties( ImageView_GetImagePath() );
-			}
-
-			ImGui::Separator();
-
-			if ( ImGui::MenuItem( "Settings", nullptr, false ) )
-			{
-			}
-
-			ImGui::EndPopup();
-		}
-	}
+	// if ( Plat_WindowFocused() )
+	Main_VoidContextMenu();
 
 	// if ( gSettingsOpen )
 	// 	Settings_Draw();

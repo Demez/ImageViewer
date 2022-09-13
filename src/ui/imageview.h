@@ -35,6 +35,7 @@ void            ImageView_Draw();
 void            ImageView_SetImage( const fs::path& path );
 void            ImageView_RemoveImage();
 bool            ImageView_HasImage();
+void            ImageView_DeleteImage();
 const fs::path& ImageView_GetImagePath();
 
 void            ImageView_FitInView( bool sScaleUp = false );
