@@ -137,6 +137,13 @@ bool ImageView_Update()
 {
 	bool shouldDraw = false;
 
+	if ( Plat_IsKeyDown( K_DELETE ) )
+	{
+		Plat_DeleteFile( gImagePath );
+		ImageList_LoadNextImage();
+		return false;
+	}
+
 	gGrabbed = Plat_IsKeyPressed( K_LBUTTON );
 
 	if ( gGrabbed )

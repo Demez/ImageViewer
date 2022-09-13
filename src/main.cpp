@@ -4,6 +4,7 @@
 #include "render.h"
 #include "ui/imageview.h"
 #include "ui/imagelist.h"
+// #include "ui/settings.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -131,8 +132,10 @@ void StyleImGui()
 }
 
 
-bool gShouldDraw = true;
-bool gCanDraw    = false;
+bool gShouldDraw   = true;
+bool gCanDraw      = false;
+bool gSettingsOpen = false;
+bool gFilePropertiesSupported = true;
 
 
 void Main_ShouldDrawWindow( bool draw )
@@ -176,23 +179,43 @@ void Main_WindowDraw()
 	ImGui::End();
 
 	// Context Menu
-	if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
+	if ( Plat_WindowFocused() )
 	{
-		if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
+		if ( ImGui::BeginPopupContextVoid( "main ctx menu" ) )
 		{
-			Plat_BrowseToFile( ImageView_GetImagePath() );
+			if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
+			{
+				Plat_BrowseToFile( ImageView_GetImagePath() );
+			}
+
+			// Copy Image (to Clipboard)
+			// Copy Image Data
+
+			if ( ImGui::MenuItem( "File Info", nullptr, false, ImageView_HasImage() ) )
+			{
+			}
+
+			if ( ImGui::MenuItem( "File Properties", nullptr, false, ImageView_HasImage() ) )
+			{
+				// TODO: create our own imgui file properties for more info
+				Plat_OpenFileProperties( ImageView_GetImagePath() );
+			}
+
+			ImGui::Separator();
+
+			if ( ImGui::MenuItem( "Settings", nullptr, false ) )
+			{
+			}
+
+			ImGui::EndPopup();
 		}
-
-		// Copy Image (to Clipboard)
-		// Copy Image Data
-		// Properties
-		// Settings
-
-		ImGui::EndPopup();
 	}
 
+	// if ( gSettingsOpen )
+	// 	Settings_Draw();
+
 	// Temp
-	// ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 
 	// ----------------------------------------------------------------------
 	// Rendering

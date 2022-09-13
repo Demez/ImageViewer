@@ -26,6 +26,8 @@ int  gMousePos[2];
 int  gMousePosPrev[2];
 int  gMouseScroll;
 
+bool gWindowFocused;
+
 
 // Ordered in the same order of the enums
 int  gKeyToVK[ KEY_COUNT ] = {
@@ -41,6 +43,8 @@ int  gKeyToVK[ KEY_COUNT ] = {
 	 VK_RIGHT,
 	 VK_UP,
 	 VK_DOWN,
+
+	 VK_DELETE,
 };
 
 
@@ -62,6 +66,8 @@ Key VKToKey( int vkey )
 		case VK_RIGHT:   return K_RIGHT;
 		case VK_UP:      return K_UP;
 		case VK_DOWN:    return K_DOWN;
+
+		case VK_DELETE:  return K_DELETE;
 	}
 }
 
@@ -242,9 +248,15 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		}
 
+		case WM_NCACTIVATE:
+		{
+			gWindowFocused = ( wParam == TRUE );
+			break;
+		}
+
 		default:
 		{
-			//printf( "unregistered message: %u\n", uMsg );
+			// printf( "unregistered message: %u\n", uMsg );
 			break;
 		}
 	}
@@ -304,6 +316,8 @@ bool Plat_IsKeyPressed( Key key )
 
 bool Plat_Init()
 {
+	setlocale( LC_ALL, "" );
+
 	DragDrop_Init();
 
 	WNDCLASSEX wc     = { 0 };
@@ -452,6 +466,12 @@ bool Plat_WindowOpen()
 }
 
 
+bool Plat_WindowFocused()
+{
+	return gWindowFocused;
+}
+
+
 // https://stackoverflow.com/a/31411628/12778316
 static NTSTATUS( __stdcall* NtDelayExecution )( BOOL Alertable, PLARGE_INTEGER DelayInterval )                                  = (NTSTATUS( __stdcall* )( BOOL, PLARGE_INTEGER ))GetProcAddress( GetModuleHandle( L"ntdll.dll" ), "NtDelayExecution" );
 static NTSTATUS( __stdcall* ZwSetTimerResolution )( IN ULONG RequestedResolution, IN BOOLEAN Set, OUT PULONG ActualResolution ) = (NTSTATUS( __stdcall* )( ULONG, BOOLEAN, PULONG ))GetProcAddress( GetModuleHandle( L"ntdll.dll" ), "ZwSetTimerResolution" );
@@ -480,6 +500,66 @@ void Plat_BrowseToFile( const fs::path& file )
 		SHOpenFolderAndSelectItems( pidl, 0, 0, 0 );
 		ILFree( pidl );
 	}
+}
+
+void Plat_OpenFileProperties( const fs::path& file )
+{
+	if ( !SHObjectProperties( gHWND, SHOP_FILEPATH, file.c_str(), NULL ) )
+	{
+		wprintf( L"Failed to open File Properties for file: %s\n", file.c_str() );
+	}
+}
+
+bool Plat_DeleteFile( const fs::path& file, bool showConfirm )
+{
+	TCHAR Buffer[ 2048 + 4 ];
+
+	wcsncpy_s( Buffer, 2048 + 4, file.c_str(), 2048 );
+	Buffer[ wcslen( Buffer ) + 1 ] = 0;  //Double-Null-Termination
+
+	SHFILEOPSTRUCT s;
+	s.hwnd                  = gHWND;
+	s.wFunc                 = FO_DELETE;
+	s.pFrom                 = Buffer;
+	s.pTo                   = NULL;
+	s.fFlags                = FOF_ALLOWUNDO;
+	s.fAnyOperationsAborted = false;
+	s.hNameMappings         = NULL;
+	s.lpszProgressTitle     = NULL;
+
+	if ( showConfirm )
+		s.fFlags |= FOF_SILENT;
+
+	int rc = SHFileOperation( &s );
+
+	if ( rc != 0 )
+		wprintf( L"Failed To Delete File: %s\n", file.c_str() );
+	else
+		wprintf( L"Deleted File: %s\n", file.c_str() );
+
+	return ( rc == 0 );
+}
+
+// Undo/Redo
+
+bool Plat_CanUndo()
+{
+	return true;
+}
+
+bool Plat_CanRedo()
+{
+	return true;
+}
+
+bool Plat_Undo()
+{
+	return true;
+}
+
+bool Plat_Redo()
+{
+	return true;
 }
 
 std::USTRING Plat_ToUnicode( const char* spStr )

@@ -73,6 +73,8 @@ enum Key
 	K_UP,
 	K_DOWN,
 
+	K_DELETE,
+
 	KEY_COUNT
 };
 
@@ -94,9 +96,19 @@ void*        Plat_GetWindow();
 void         Plat_GetWindowSize( int& srWidth, int& srHeight );
 void         Plat_SetWindowTitle( const std::USTRING& srTitle );
 bool         Plat_WindowOpen();
+bool         Plat_WindowFocused(); 
 
 void         Plat_Sleep( float ms );
+
+// Shell Operations
 void         Plat_BrowseToFile( const std::filesystem::path& file );
+void         Plat_OpenFileProperties( const std::filesystem::path& file );
+bool         Plat_DeleteFile( const std::filesystem::path& file, bool showConfirm = true );
+
+bool         Plat_CanUndo();
+bool         Plat_CanRedo();
+bool         Plat_Undo();
+bool         Plat_Redo();
 
 std::USTRING Plat_ToUnicode( const char* spStr );
 int          Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize );
