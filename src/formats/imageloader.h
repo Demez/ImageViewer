@@ -29,6 +29,12 @@ struct ImageInfo
 };
 
 
+struct ImageData
+{
+	std::vector< std::vector< char > > aData;
+};
+
+
 // TODO:
 // - add a header check function
 // - add a struct for image data to support animations
@@ -41,8 +47,16 @@ public:
 };
 
 
+void       ImageLoader_RegisterFormat( IImageFormat* spFormat );
 ImageInfo* ImageLoader_LoadImage( const fs::path& path, std::vector< char >& srData );
 bool       ImageLoader_SupportsImage( const fs::path& path );
 bool       ImageLoader_SupportsImageExt( const fs::path& ext );
-void       ImageLoader_RegisterFormat( IImageFormat* spFormat );
+
+// ideas
+// 
+// using DImageHandle = size_t;
+// 
+// void       ImageLoader_GetDimensions( DImageHandle img, int& srWidth, int& srHeight );
+// void       ImageLoader_GetPitch( DImageHandle img );
+// void       ImageLoader_GetColorType( DImageHandle img );
 

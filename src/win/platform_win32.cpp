@@ -508,3 +508,19 @@ std::USTRING Plat_GetModuleName()
 	return buffer;
 }
 
+
+Module Plat_LoadLibrary( const uchar* path )
+{
+	return (Module)LoadLibrary( path );
+}
+
+void Plat_CloseLibrary( Module mod )
+{
+	FreeLibrary( (HMODULE)mod );
+}
+
+void* Plat_LoadFunc( Module mod, const char* name )
+{
+	return GetProcAddress( (HMODULE)mod, name );
+}
+

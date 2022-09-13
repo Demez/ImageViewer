@@ -23,19 +23,12 @@ set( CMAKE_SHARED_LIBRARY_PREFIX "" )
 set_property( GLOBAL PROPERTY PREFIX "" )
 
 include_directories(
-	"imgui"
-	"src"
+	"${CMAKE_CURRENT_LIST_DIR}/imgui"
+	"${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
 # Compiler/Platform specifc options
 if( MSVC )
-	set( SPNG_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/libspng/build/${CMAKE_BUILD_TYPE} )
-
-	include_directories(
-		"thirdparty/SDL2/include"
-	)
-
-	link_directories( ${SPNG_LIB_DIR} "thirdparty/SDL2/lib/x64" )
 
 	add_compile_definitions(
 		NOMINMAX
@@ -85,10 +78,6 @@ if( MSVC )
 else()  # linux
 
 	set( CMAKE_CXX_COMPILER g++ )
-	
-	include_directories(
-		"src/linux/"
-	)
 
 	link_libraries( pthread m )
 	

@@ -8,6 +8,12 @@
 std::vector< IImageFormat* > gFormats;
 
 
+void ImageLoader_RegisterFormat( IImageFormat* spFormat )
+{
+	gFormats.push_back( spFormat );
+}
+
+
 ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& srData )
 {
 	if ( !fs_file_exists( srPath.c_str() ) )
@@ -67,11 +73,4 @@ bool ImageLoader_SupportsImageExt( const fs::path& ext )
 
 	return false;
 }
-
-
-void ImageLoader_RegisterFormat( IImageFormat* spFormat )
-{
-	gFormats.push_back( spFormat );
-}
-
 

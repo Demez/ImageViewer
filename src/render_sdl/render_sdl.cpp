@@ -1,4 +1,4 @@
-#include "render.h"
+#include "../render.h"
 #include "platform.h"
 #include "formats/imageloader.h"
 
@@ -17,18 +17,17 @@ SDL_Window*   gWindow   = nullptr;
 std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
 
 
-bool Render_Init()
+bool Render_Init( void* spWindow )
 {
 	SDL_Init( SDL_INIT_VIDEO );
 
-	void* window = Plat_GetWindow();
-	if ( window == nullptr )
+	if ( spWindow == nullptr )
 	{
 		printf( "Plat_GetWindow returned nullptr?\n" );
 		return false;
 	}
 
-	if ( !( gWindow = SDL_CreateWindowFrom( window ) ) )
+	if ( !( gWindow = SDL_CreateWindowFrom( spWindow ) ) )
 	{
 		printf( "Failed to create SDL_Window from HWDN: %s\n", SDL_GetError() );
 		return false;
@@ -53,7 +52,6 @@ bool Render_Init()
 void Render_Shutdown()
 {
 	SDL_DestroyRenderer( gRenderer );
-	// SDL_DestroyWindow( gWindow );
 }
 
 

@@ -20,18 +20,28 @@ set(
 )
 
 include( "../core.cmake" )
-
-include_directories(
-	"../thirdparty/SDL2/include"
-)
+include( "../sdl2.cmake" )
 
 add_library(
-	ImGui STATIC
+	ImGui SHARED
 	${IMGUI_FILES} )
+	
+target_link_libraries( ImGui SDL2 )
 
 set_target_properties(
 	ImGui PROPERTIES
 	LINKER_LANGUAGE CXX
 	OUTPUT_NAME imgui
 )
+
+# set output directories for all builds (Debug, Release, etc.)
+foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+    string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+
+    set_target_properties(
+    	ImGui PROPERTIES
+    	RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${IMGVIEW_BUILD}/${OUTPUTCONFIG}
+    	LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${IMGVIEW_BUILD}/${OUTPUTCONFIG}
+    )
+endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 

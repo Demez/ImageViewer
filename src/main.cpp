@@ -12,6 +12,53 @@
 #include "imgui.h"
 
 
+Module gRenderer = 0;
+
+
+// uhh where tf do i put this
+Render_Init_t      Render_Init      = 0;
+Render_Shutdown_t  Render_Shutdown  = 0;
+
+Render_NewFrame_t  Render_NewFrame  = 0;
+Render_Draw_t      Render_Draw      = 0;
+
+Render_LoadImage_t Render_LoadImage = 0;
+Render_FreeImage_t Render_FreeImage = 0;
+Render_DrawImage_t Render_DrawImage = 0;
+
+
+#define LOAD_RENDER_FUNC( name ) \
+	if ( !(name = (##name##_t)Plat_LoadFunc( gRenderer, #name )) ) \
+	{                                                                \
+		printf( "Failed To Load Render Function: \"%s\"\n", #name );\
+		return false;\
+	}
+
+
+bool LoadRenderer()
+{
+	// printf( "Failed to Init Renderer!!\n" );
+
+	if ( !( gRenderer = Plat_LoadLibrary( _T("RenderSDL") EXT_DLL ) ) )
+	{
+		printf( "Failed to Load Renderer!!\n" );
+		return false;
+	}
+
+	LOAD_RENDER_FUNC( Render_Init );
+	LOAD_RENDER_FUNC( Render_Shutdown );
+
+	LOAD_RENDER_FUNC( Render_NewFrame );
+	LOAD_RENDER_FUNC( Render_Draw );
+
+	LOAD_RENDER_FUNC( Render_LoadImage );
+	LOAD_RENDER_FUNC( Render_FreeImage );
+	LOAD_RENDER_FUNC( Render_DrawImage );
+
+	return true;
+}
+
+
 void StyleImGui()
 {
 	auto&   io                               = ImGui::GetIO();
@@ -85,6 +132,7 @@ void StyleImGui()
 
 
 bool gShouldDraw = true;
+bool gCanDraw    = false;
 
 
 void Main_ShouldDrawWindow( bool draw )
@@ -95,6 +143,9 @@ void Main_ShouldDrawWindow( bool draw )
 
 void Main_WindowDraw()
 {
+	if ( !gCanDraw )
+		return;
+
 	Render_NewFrame();
 
 	ImageView_Draw();
@@ -152,7 +203,12 @@ void Main_WindowDraw()
 
 int entry()
 {
+	if ( !LoadRenderer() )
+		return 1;
+
 	ImGui::CreateContext();
+
+	auto imguiCtx = ImGui::GetCurrentContext();
 
 	if ( !Plat_Init() )
 	{
@@ -163,9 +219,9 @@ int entry()
 
 	StyleImGui();
 
-	if ( !Render_Init() )
+	if ( !Render_Init( Plat_GetWindow() ) )
 	{
-		printf( "Failed to init Renderer!!\n" );
+		printf( "Failed to Init Renderer!!\n" );
 		ImGui::DestroyContext();
 		Plat_Shutdown();
 		return 1;
@@ -175,8 +231,10 @@ int entry()
 	{
 		ImageView_SetImage( Args_Get( 1 ) );
 	}
+	
+	gCanDraw = Plat_WindowOpen();
 
-	while ( Plat_WindowOpen() )
+	while ( gCanDraw )
 	{
 		Plat_Update();
 
@@ -201,6 +259,7 @@ int entry()
 		Plat_Sleep( 0.5 );
 
 		gShouldDraw = false;
+		gCanDraw    = Plat_WindowOpen();
 	}
 
 	Render_Shutdown();

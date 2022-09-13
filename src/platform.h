@@ -5,6 +5,22 @@
 #include <filesystem>
 
 
+typedef void* Module;
+
+
+#ifdef _WIN32
+	#define EXT_DLL _T(".dll")
+	#define DLL_EXPORT __declspec(dllexport)
+	#define DLL_IMPORT __declspec(dllimport)
+#elif __linux__
+	#define EXT_DLL ".so"
+	#define DLL_EXPORT __attribute__((__visibility__("default")))
+	#define DLL_IMPORT
+#else
+	#error "Library loading not setup for this platform"
+#endif
+
+
 #ifdef _WIN32
 
   // platform specific unicode character type
@@ -86,6 +102,10 @@ std::USTRING Plat_ToUnicode( const char* spStr );
 int          Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize );
 
 std::USTRING Plat_GetModuleName();
+
+Module       Plat_LoadLibrary( const uchar* path );
+void         Plat_CloseLibrary( Module mod );
+void*        Plat_LoadFunc( Module mod, const char* name );
 
 // ---------------------------------------------------------------------------------------
 // Drag and Drop

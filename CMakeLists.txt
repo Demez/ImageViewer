@@ -3,6 +3,7 @@ cmake_minimum_required( VERSION 3.18 FATAL_ERROR )
 project( ImageViewer )
 
 add_subdirectory( imgui )
+add_subdirectory( src/render_sdl )
 
 set( SRC_FILES
   src/main.cpp
@@ -15,9 +16,6 @@ set( SRC_FILES
   src/platform.h
   src/render.h
 
-  # SDL2 Renderer abstraction
-  src/render_sdl/render_sdl.cpp
-  
   # UI
   src/ui/imagelist.cpp
   src/ui/imagelist.h
@@ -31,7 +29,8 @@ set( SRC_FILES
   # src/formats/format_win32_wic.cpp
   src/formats/format_png.cpp
   src/formats/format_jpeg.cpp
-  src/formats/format_jpegxl.cpp
+  # src/formats/format_gif.cpp  # ew
+  # src/formats/format_jpegxl.cpp
 )
 
 if( MSVC )
@@ -46,17 +45,23 @@ else()
 endif()
 
 include( core.cmake )
+include( sdl2.cmake )  # stupid cmake making this program need SDL2
 
 set( JXL_DIR "${CMAKE_CURRENT_LIST_DIR}/thirdparty/libjxl" )
 
 include_directories(
+	"thirdparty"
+	"thirdparty/async"
 	"thirdparty/libspng/spng"
 	"thirdparty/libjpeg-turbo"
 	"${JXL_DIR}/lib/include"
 	"${JXL_DIR}/build/lib/include"
 )
 
+set( SPNG_LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/libspng/build/${CMAKE_BUILD_TYPE} )
+	
 link_directories(
+	${SPNG_LIB_DIR}
 	"thirdparty/libjpeg-turbo/build"
 	"${JXL_DIR}/build/lib"
 )
@@ -65,7 +70,6 @@ add_executable( ImageViewer ${SRC_FILES} ${PLAT_FILES} )
 
 target_link_libraries(
 	ImageViewer
-	SDL2
 	spng
 	ImGui
 	turbojpeg-static

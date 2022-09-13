@@ -10,7 +10,6 @@
 #include "formats/imageloader.h"
 #include "render.h"
 
-#include <SDL.h>
 #include "imgui.h"
 //#include "async/async.h"
 
