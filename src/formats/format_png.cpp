@@ -62,6 +62,8 @@ public:
 
         spng_ctx_free( ctx );
 
+        fclose( pFile );
+
 		return imageData;
 	}
 };
