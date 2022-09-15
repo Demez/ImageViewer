@@ -132,9 +132,10 @@ void StyleImGui()
 }
 
 
-bool gShouldDraw   = true;
-bool gCanDraw      = false;
-bool gSettingsOpen = false;
+bool gRunning                 = true;
+bool gShouldDraw              = true;
+bool gCanDraw                 = false;
+bool gSettingsOpen            = false;
 bool gFilePropertiesSupported = true;
 
 
@@ -300,6 +301,7 @@ int entry()
 	}
 	
 	gCanDraw = Plat_WindowOpen();
+	gRunning = gCanDraw;
 
 	while ( gCanDraw )
 	{

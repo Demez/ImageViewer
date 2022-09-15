@@ -3,6 +3,7 @@
 #include <condition_variable>
 
 #include "args.h"
+#include "main.h"
 #include "imageview.h"
 #include "platform.h"
 #include "ui/imagelist.h"
@@ -129,9 +130,80 @@ void ImageView_EventMouseMotion( int xrel, int yrel )
 }
 
 
+fs::path            gNewImagePath;
+ImageInfo*          gNewImageData = nullptr;
+std::vector< char > gReadData;
+
+
+void ImageView_SetImageInternal( const fs::path& path )
+{
+	gNewImagePath = fs_clean_path( path );
+
+	// TODO: this is a slow blocking operation on the main thread
+	// async or move this to a image loader thread and use a callback for when it's loaded
+	if ( !( gNewImageData = ImageLoader_LoadImage( gNewImagePath, gReadData ) ) )
+		return;
+}
+
+
+// TODO: probably use a mutex lock or something to have this sleep while not used
+void LoadImageFunc()
+{
+	while ( gRunning )
+	{
+		if ( !gNewImageData && !gNewImagePath.empty() )
+			ImageView_SetImageInternal( gNewImagePath );
+
+		Plat_Sleep( 100 );
+	}
+}
+
+
+std::thread gLoadImageThread( LoadImageFunc );
+
+
+void ImageView_LoadImage()
+{
+	if ( gpImageInfo )
+		ImageView_RemoveImage();
+
+	gpImageInfo  = gNewImageData;
+
+	gImageHandle = Render_LoadImage( gpImageInfo, gReadData );
+
+	// default zoom settings for now
+	int width, height;
+	Plat_GetWindowSize( width, height );
+
+	gDrawInfo.aX      = ( width - gpImageInfo->aWidth ) / 2;
+	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
+	gDrawInfo.aWidth  = gpImageInfo->aWidth;
+	gDrawInfo.aHeight = gpImageInfo->aHeight;
+
+	gImagePath        = gNewImagePath;
+
+	ImageView_FitInView();
+
+	// update image list
+	ImageList_SetPathFromFile( gNewImagePath );
+
+	Plat_SetWindowTitle( L"Demez Image View - " + gNewImagePath.wstring() );
+
+	gNewImagePath.clear();
+	gNewImageData = nullptr;
+	gReadData.clear();
+}
+
+
 bool ImageView_Update()
 {
 	bool shouldDraw = false;
+
+	if ( gNewImageData )
+	{
+		// an image being loaded in the background is now ready to be finished loading on the main thread
+		ImageView_LoadImage();
+	}
 
 	if ( Plat_IsKeyDown( K_DELETE ) )
 	{
@@ -168,48 +240,9 @@ void ImageView_Draw()
 }
 
 
-void ImageView_SetImageInternal( const fs::path& path )
-{
-	fs::path            file         = fs_clean_path( path );
-
-	// TODO: this is a slow blocking operation on the main thread
-	// async or move this to a image loader thread and use a callback for when it's loaded
-	ImageInfo*          newImageData = nullptr;
-	std::vector< char > data;
-	if ( !( newImageData = ImageLoader_LoadImage( file, data ) ) )
-		return;
-
-	if ( gpImageInfo )
-		ImageView_RemoveImage();
-
-	gpImageInfo  = newImageData;
-
-	gImageHandle = Render_LoadImage( gpImageInfo, data );
-
-	// default zoom settings for now
-	int width, height;
-	Plat_GetWindowSize( width, height );
-
-	gDrawInfo.aX      = ( width - gpImageInfo->aWidth ) / 2;
-	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
-	gDrawInfo.aWidth  = gpImageInfo->aWidth;
-	gDrawInfo.aHeight = gpImageInfo->aHeight;
-
-	gImagePath        = file;
-
-	ImageView_FitInView();
-
-	// update image list
-	ImageList_SetPathFromFile( file );
-
-	Plat_SetWindowTitle( L"Demez Image View - " + path.wstring() );
-}
-
-
 void ImageView_SetImage( const fs::path& path )
 {
-	// static bool threaded = !Args_Has( _T("-no-threading") );
-	ImageView_SetImageInternal( path );
+	gNewImagePath = path;
 }
 
 
