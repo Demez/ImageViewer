@@ -46,8 +46,6 @@ bool HandleWheelEvent( int scroll )
 	if ( !gpImageInfo || scroll == 0 )
 		return false;
 
-	printf( "scroll: %d\n", scroll );
-
 	double factor = 1.0;
 
 	// Zoom in if scrolling up
@@ -79,8 +77,6 @@ bool HandleWheelEvent( int scroll )
 	// 100, 200, 400, 500, 50, 25, etc
 
 	auto roundedZoom = std::max( 0.1f, roundf( gZoomLevel * factor * 10 ) / 10 );
-
-	printf( "rounded zoom: %.3f\n", roundedZoom );
 
 	if ( fmod( roundedZoom, 1.0 ) == 0 )
 		factor = roundedZoom / gZoomLevel;
