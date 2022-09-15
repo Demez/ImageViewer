@@ -162,6 +162,10 @@ void Main_VoidContextMenu()
 	{
 	}
 
+	if ( ImGui::MenuItem( "Set As Desktop Background", nullptr, false, false ) )
+	{
+	}
+
 	if ( ImGui::MenuItem( "Undo", nullptr, false, Plat_CanUndo() ) )
 	{
 		Plat_Undo();
@@ -214,6 +218,8 @@ void Main_WindowDraw()
 	if ( !gCanDraw )
 		return;
 
+	gCanDraw = false;
+
 	Render_NewFrame();
 
 	ImageView_Draw();
@@ -257,6 +263,8 @@ void Main_WindowDraw()
 	// Rendering
 
 	Render_Draw();
+
+	gCanDraw = true;
 }
 
 
