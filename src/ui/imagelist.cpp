@@ -51,7 +51,8 @@ void ImageList_SetPathFromFile( const fs::path& srFile )
 
 	if ( gIndex == SIZE_MAX )
 	{
-		printf( "what the FUCK\n" );
+		ImageList_LoadFiles();
+		gIndex = vec_index( gImages, srFile );
 	}
 }
 
