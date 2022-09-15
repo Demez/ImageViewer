@@ -108,28 +108,6 @@ bool HandleWheelEvent( int scroll )
 // -------------------------------------------------------------------
 
 
-void ImageView_EventMouseMotion( int xrel, int yrel )
-{
-	if ( !gGrabbed )
-		return;
-
-	auto& io = ImGui::GetIO();
-
-	// imgui window is being interacted with
-	if ( io.MouseDownOwned[ 0 ] )
-	{
-		gGrabbed = false;
-		return;
-	}
-
-	if ( !gpImageInfo )
-		return;
-
-	gDrawInfo.aX += xrel;
-	gDrawInfo.aY += yrel;
-}
-
-
 fs::path            gNewImagePath;
 ImageInfo*          gNewImageData = nullptr;
 std::vector< char > gReadData;
@@ -211,20 +189,31 @@ bool ImageView_Update()
 		return false;
 	}
 
+	if ( !gpImageInfo )
+		return false;
+	
+	auto& io = ImGui::GetIO();
+
+	// if ( io.WantCaptureMouse && !gGrabbed )
+	if ( io.WantCaptureMouseUnlessPopupClose && !gGrabbed )
+		return false;
+
 	gGrabbed = Plat_IsKeyPressed( K_LBUTTON );
 
+	// check if the mouse isn't hovering over any window and we didn't grab it already
 	if ( gGrabbed )
 	{
-		int dx, dy;
-		Plat_GetMouseDelta( dx, dy );
-		ImageView_EventMouseMotion( dx, dy );
+		int xrel, yrel;
+		Plat_GetMouseDelta( xrel, yrel );
+		gDrawInfo.aX += xrel;
+		gDrawInfo.aY += yrel;
 		shouldDraw = true;
 	}
 
 	// if window resized and zoom mode set to ImageZoom_FitInView, refit the image
 	// probably use a callback for this? idk
 
-	if ( !gpImageInfo )
+	if ( io.WantCaptureMouseUnlessPopupClose )
 		return false;
 
 	shouldDraw |= HandleWheelEvent( Plat_GetMouseScroll() );

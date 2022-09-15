@@ -20,7 +20,10 @@ enum FileSort : u8
 	FileSort_Count
 };
 
+
 void     ImageList_Update();
+void     ImageList_Draw();
+void     ImageList_Draw2();
 
 void     ImageList_SetSortMode( FileSort sortMode );
 FileSort ImageList_GetSortMode();
@@ -36,3 +39,4 @@ bool     ImageList_LoadPrevImage();
 bool     ImageList_LoadNextImage();
 
 void     ImageList_RemoveItem( const fs::path& srFile );
+

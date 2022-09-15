@@ -116,6 +116,8 @@ bool         Plat_Redo();
 std::USTRING Plat_ToUnicode( const char* spStr );
 int          Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize );
 
+std::string  Plat_FromUnicode( const uchar* spStr );
+
 std::USTRING Plat_GetModuleName();
 
 Module       Plat_LoadLibrary( const uchar* path );

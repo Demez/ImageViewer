@@ -1,10 +1,14 @@
-#include "imagelist.h"
+﻿#include "imagelist.h"
 #include "platform.h"
 #include "util.h"
+#include "main.h"
 #include "formats/imageloader.h"
 #include "ui/imageview.h"
+#include "render.h"
+#include "imgui.h"
 
 #include <map>
+#include <thread>
 
 
 static fs::path                gCurrentDir;
@@ -19,12 +23,61 @@ extern fs::path                gImagePath;
 
 struct ImageListElement
 {
+	size_t        aIndex;
+	ImageInfo*    apInfo;
+	ImageDrawInfo aDrawData;
+	size_t        aImageHandle = 0;
 };
 
+
+static std::vector< ImageInfo* > gImageThumbnails;
+
+
+static fs::path                         gNewImagePath = L"C:\\Users\\Demez\\Downloads\\[twitter] lewdakiddo_rb26—2022.09.09—1568386946812215297—FcQHmKGaIAACxvH.png";
+static ImageInfo*          gNewImageData = nullptr;
+static std::vector< char >              gReadData;
+
+// temp
+static ImageDrawInfo                    gDrawData;
+static size_t                           gImageHandle = 0;
+
+
+void ImageList_LoadThumbnail( const fs::path& path )
+{
+	gNewImagePath = fs_clean_path( path );
+
+	// TODO: this is a slow blocking operation on the main thread
+	// async or move this to a image loader thread and use a callback for when it's loaded
+	if ( !( gNewImageData = ImageLoader_LoadImage( gNewImagePath, gReadData ) ) )
+		return;
+
+	gImageHandle = Render_LoadImage( gNewImageData, gReadData );
+}
+
+
+// TODO: probably use a mutex lock or something to have this sleep while not used
+void LoadThumbnailFunc()
+{
+	while ( gRunning )
+	{
+		if ( !gNewImageData && !gNewImagePath.empty() )
+			ImageList_LoadThumbnail( gNewImagePath );
+
+		Plat_Sleep( 100 );
+	}
+}
+
+// std::thread gLoadImageThread( LoadImageFunc );
 
 
 void ImageList_Update()
 {
+	// TEMP !!!!
+	if ( gNewImageData == nullptr )
+	{
+		ImageList_LoadThumbnail( gNewImagePath );
+	}
+
 	// check folder monitor for if a change happened
 	if ( !Plat_FolderMonitorChanged() )
 		return;
@@ -58,6 +111,76 @@ void ImageList_Update()
 		// update our image index
 		gIndex = newIndex;
 	}
+}
+
+
+void ImageList_Draw()
+{
+	int width, height;
+	Plat_GetWindowSize( width, height );
+
+	ImGui::SetNextWindowPos( { 0, 0 } );
+	// ImGui::SetNextWindowSize( {(float)width, 64} );
+	ImGui::SetNextWindowSizeConstraints( { (float)width, 80 }, { (float)width, height/2.f } );
+
+	if ( !ImGui::Begin( "Image List", 0, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar ) )
+	{
+		ImGui::End();
+		return;
+	}
+
+	auto region = ImGui::GetContentRegionAvail();
+
+	int selected = 0;
+	for ( size_t i = 0; i < gImages.size(); i++ )
+	{
+		ImGui::PushID( i );
+
+		// thanks imgui for not having this use ImWchar
+#if _WIN32
+		std::string path = Plat_FromUnicode( gImages[ i ].c_str() );
+#else
+		std::string path = gImages[ i ].string();
+#endif
+
+		if ( ImGui::Selectable( path.c_str(), gImages[ i ] == gImagePath, 0, { region.y, region.y } ) )
+		{
+			selected = i;
+			ImageView_SetImage( gImages[ i ] );
+		}
+
+		// ImGui::BeginTooltip();
+		// ImGui::TextUnformatted( "lol" );
+		// ImGui::EndTooltip();
+
+		ImGui::PopID();
+		ImGui::SameLine();
+	}
+
+	// uhhh
+	// gDrawData.aHeight = 48;
+	// gDrawData.aWidth  = 48;
+	// gDrawData.aX      = 12;
+	// gDrawData.aY      = 12;
+	// Render_DrawImage( gNewImageData, gDrawData ); 
+	
+	// ImGui::Image();
+
+	ImGui::End();
+}
+
+
+void ImageList_Draw2()
+{
+	// int width, height;
+	// Plat_GetWindowSize( width, height );
+	// 
+	// // uhhh
+	// gDrawData.aHeight = 48;
+	// gDrawData.aWidth  = 48;
+	// gDrawData.aX      = 12;
+	// gDrawData.aY      = 12;
+	// Render_DrawImage( gNewImageData, gDrawData ); 
 }
 
 

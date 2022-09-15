@@ -543,6 +543,19 @@ int Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize )
 	return MultiByteToWideChar( CP_UTF8, 0, spStr, -1, spDst, sSize );
 }
 
+std::string Plat_FromUnicode( const uchar* spStr )
+{
+	char name[ 2048 ] = { 0 };
+
+	// the following function converts the UTF-8 filename to UTF-16 (WCHAR) nameW
+	int  len          = WideCharToMultiByte( CP_UTF8, 0, spStr, -1, name, 2048, NULL, NULL );
+
+	if ( len > 0 )
+		return name;
+
+	return "";
+}
+
 std::USTRING Plat_GetModuleName()
 {
 	uchar buffer[ MAX_PATH ];

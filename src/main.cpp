@@ -17,15 +17,19 @@ Module gRenderer = 0;
 
 
 // uhh where tf do i put this
-Render_Init_t      Render_Init      = 0;
-Render_Shutdown_t  Render_Shutdown  = 0;
+Render_Init_t          Render_Init          = 0;
+Render_Shutdown_t      Render_Shutdown      = 0;
 
-Render_NewFrame_t  Render_NewFrame  = 0;
-Render_Draw_t      Render_Draw      = 0;
+Render_NewFrame_t      Render_NewFrame      = 0;
+Render_DrawImGui_t     Render_DrawImGui     = 0;
+Render_Present_t       Render_Present       = 0;
 
-Render_LoadImage_t Render_LoadImage = 0;
-Render_FreeImage_t Render_FreeImage = 0;
-Render_DrawImage_t Render_DrawImage = 0;
+Render_SetClearColor_t Render_SetClearColor = 0;
+Render_GetClearColor_t Render_GetClearColor = 0;
+
+Render_LoadImage_t     Render_LoadImage     = 0;
+Render_FreeImage_t     Render_FreeImage     = 0;
+Render_DrawImage_t     Render_DrawImage     = 0;
 
 
 #define LOAD_RENDER_FUNC( name ) \
@@ -50,7 +54,11 @@ bool LoadRenderer()
 	LOAD_RENDER_FUNC( Render_Shutdown );
 
 	LOAD_RENDER_FUNC( Render_NewFrame );
-	LOAD_RENDER_FUNC( Render_Draw );
+	LOAD_RENDER_FUNC( Render_DrawImGui );
+	LOAD_RENDER_FUNC( Render_Present );
+
+	LOAD_RENDER_FUNC( Render_SetClearColor );
+	LOAD_RENDER_FUNC( Render_GetClearColor );
 
 	LOAD_RENDER_FUNC( Render_LoadImage );
 	LOAD_RENDER_FUNC( Render_FreeImage );
@@ -230,6 +238,8 @@ void Main_WindowDraw()
 
 	ImGui::NewFrame();
 
+	ImageList_Draw();
+
 	// Zoom Display
 	char buf[ 16 ] = { '\0' };
 	snprintf( buf, 16, "%.0f%%\0", ImageView_GetZoomLevel() * 100 );
@@ -258,12 +268,17 @@ void Main_WindowDraw()
 	// 	Settings_Draw();
 
 	// Temp
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	// ----------------------------------------------------------------------
 	// Rendering
 
-	Render_Draw();
+	ImGui::Render();
+	Render_DrawImGui( ImGui::GetDrawData() );
+
+	ImageList_Draw2();
+
+	Render_Present();
 
 	gCanDraw = true;
 }
@@ -299,6 +314,8 @@ int entry()
 	{
 		ImageView_SetImage( Args_Get( 1 ) );
 	}
+
+	Render_SetClearColor( 48, 48, 48 );
 	
 	gCanDraw = Plat_WindowOpen();
 	gRunning = gCanDraw;

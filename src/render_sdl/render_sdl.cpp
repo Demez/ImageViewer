@@ -10,8 +10,12 @@
 #include <unordered_map>
 
 
-SDL_Renderer* gRenderer = nullptr;
-SDL_Window*   gWindow   = nullptr;
+int                                            gClearR   = 48;
+int                                            gClearG   = 48;
+int                                            gClearB   = 48;
+
+SDL_Renderer*                                  gRenderer = nullptr;
+SDL_Window*                                    gWindow   = nullptr;
 
 // std::unordered_map< ImageInfo*, SDL_Surface* > gImageTextures;
 std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
@@ -64,12 +68,31 @@ void Render_NewFrame()
 }
 
 
-void Render_Draw()
+void Render_DrawImGui( ImDrawData* spImDrawData )
 {
-	ImGui::Render();
-	ImGui_ImplSDLRenderer_RenderDrawData( ImGui::GetDrawData() );
-	
+	ImGui_ImplSDLRenderer_RenderDrawData( spImDrawData );
+}
+
+
+void Render_Present()
+{
 	SDL_RenderPresent( gRenderer );
+}
+
+
+void Render_SetClearColor( int r, int g, int b )
+{
+	gClearR = r;
+	gClearG = g;
+	gClearB = b;
+}
+
+
+void Render_GetClearColor( int& r, int& g, int& b )
+{
+	r = gClearR;
+	g = gClearG;
+	b = gClearB;
 }
 
 
