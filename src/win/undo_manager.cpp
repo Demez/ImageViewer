@@ -15,111 +15,14 @@
 #include <shlobj_core.h> 
 #include <windowsx.h>  // GET_X_LPARAM/GET_Y_LPARAM
 
+#include "platform_win32.h"
+
 
 #define SHCNF_ACCEPT_INTERRUPTS     0x0001
 #define SHCNF_ACCEPT_NON_INTERRUPTS 0x0002
 
 #define WM_SHELLNOTIFY              ( WM_USER + 5 )
 #define WM_SHELLNOTIFYRBINDIR       ( WM_USER + 6 )
-
-
-extern HWND gHWND;
-
-
-#if 0
-struct ImgUndoManager : public IOleUndoManager
-{
-	HWND aHWND = 0;
-	LONG nRef = 0L;
-
-	HRESULT Open( IOleParentUndoUnit* pPUU ) override
-	{
-	}
-
-	HRESULT Close( IOleParentUndoUnit* pPUU, BOOL fCommit ) override
-	{
-	}
-
-	HRESULT Add( IOleUndoUnit* pUU ) override
-	{
-	}
-
-	HRESULT GetOpenParentState( DWORD* pdwState ) override
-	{
-	}
-
-	HRESULT DiscardFrom( IOleUndoUnit* pUU ) override
-	{
-	}
-
-	HRESULT UndoTo( IOleUndoUnit* pUU ) override
-	{
-	}
-
-	HRESULT RedoTo( IOleUndoUnit* pUU ) override
-	{
-	}
-
-	HRESULT EnumUndoable( IEnumOleUndoUnits** ppEnum ) override
-	{
-	}
-
-	HRESULT EnumRedoable( IEnumOleUndoUnits** ppEnum ) override
-	{
-	}
-
-	HRESULT GetLastUndoDescription( BSTR* pBstr ) override
-	{
-	}
-
-	HRESULT GetLastRedoDescription( BSTR* pBstr ) override
-	{
-	}
-
-	HRESULT Enable( BOOL fEnable ) override
-	{
-	}
-
-	// from IUnknown
-
-	// this is not being called, huh
-	HRESULT QueryInterface( REFIID riid, void** ppvObject ) override
-	{
-		printf( "QueryInterface\n" );
-
-		if ( riid == IID_IUnknown || riid == IID_IDropTarget )
-		{
-			AddRef();
-			*ppvObject = this;
-			return S_OK;
-		}
-		else
-		{
-			*ppvObject = 0;
-			return E_NOINTERFACE;
-		};
-	}
-
-	ULONG AddRef() override
-	{
-		return ++nRef;
-		// printf( "AddRef\n" );
-		// return 0;
-	}
-
-	ULONG Release() override
-	{
-		ULONG uRet = --nRef;
-		if ( uRet == 0 )
-			delete this;
-
-		return uRet;
-
-		// printf( "Release\n" );
-		// return 0;
-	}
-};
-#endif
 
 
 // ---------------------------------------------------------------------
@@ -187,8 +90,12 @@ bool UndoManager_Init()
 	STRRET strRet;
 	hr = gpDesktop->GetDisplayNameOf( gPidlRecycleBin, SHGDN_NORMAL, &strRet );
 
-
 	return true;
+}
+
+
+void UndoManager_Shutdown()
+{
 }
 
 

@@ -16,10 +16,7 @@
 #include <shlobj_core.h> 
 #include <windowsx.h>  // GET_X_LPARAM/GET_Y_LPARAM
 
-
-// Register Drag and Drop support for a window
-extern bool DragDrop_Register( HWND hwnd );
-extern bool UndoManager_Init();
+#include "platform_win32.h"
 
 
 HWND gHWND = nullptr;
@@ -410,6 +407,8 @@ bool Plat_Init()
 
 void Plat_Shutdown()
 {
+	UndoManager_Shutdown();
+	FolderMonitor_Shutdown();
 }
 
 

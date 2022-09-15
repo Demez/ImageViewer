@@ -3,10 +3,10 @@
 #include <string>
 #include "util.h"
 
-union SDL_Event;
 
 enum FileSort : u8
 {
+	FileSort_None,
 	FileSort_System,
 	FileSort_AZ,
 	FileSort_ZA,

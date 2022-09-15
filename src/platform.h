@@ -78,6 +78,7 @@ enum Key
 	KEY_COUNT
 };
 
+
 const uchar* Plat_GetError();
 
 bool         Plat_Init();
@@ -106,6 +107,7 @@ void         Plat_BrowseToFile( const std::filesystem::path& file );
 void         Plat_OpenFileProperties( const std::filesystem::path& file );
 bool         Plat_DeleteFile( const std::filesystem::path& file, bool showConfirm = true );
 
+// Undo/Redo support
 bool         Plat_CanUndo();
 bool         Plat_CanRedo();
 bool         Plat_Undo();
@@ -120,25 +122,7 @@ Module       Plat_LoadLibrary( const uchar* path );
 void         Plat_CloseLibrary( Module mod );
 void*        Plat_LoadFunc( Module mod, const char* name );
 
-// ---------------------------------------------------------------------------------------
-// Drag and Drop
-
-// setup function pointers for callbacks
-
-// check if valid drop target
-// and accept drop
-
-void         Plat_DragDropCallback();
-void         Plat_DragDropAccept( bool accept = true );
-
-
-// hmmm
-// IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect 
-struct PlatDropTarget
-{
-	virtual void DragEnter() = 0;
-	virtual void DragOver() = 0;
-	virtual void DragLeave() = 0;
-	virtual void Drop() = 0;
-};
+// Folder Monitoring
+bool         Plat_FolderMonitorSetPath( const std::filesystem::path& srPath );
+bool         Plat_FolderMonitorChanged();
 

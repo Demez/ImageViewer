@@ -38,7 +38,9 @@ set( SRC_FILES
 if( MSVC )
 	set( PLAT_FILES
 		src/win/drag_drop.cpp
+		src/win/folder_monitor.cpp
 		src/win/platform_win32.cpp
+		src/win/platform_win32.h
 		src/win/undo_manager.cpp
 	)
 else()

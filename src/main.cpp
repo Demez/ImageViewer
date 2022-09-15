@@ -317,7 +317,7 @@ int entry()
 			gShouldDraw = true;
 		}
 
-		// shouldDraw |= ImageList_Update();
+		ImageList_Update();
 		gShouldDraw |= ImageView_Update();
 
 		// if ( gShouldDraw )
