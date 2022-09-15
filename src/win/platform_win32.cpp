@@ -16,7 +16,11 @@
 #include <shlobj_core.h> 
 #include <windowsx.h>  // GET_X_LPARAM/GET_Y_LPARAM
 
-#include "drag_drop.h"
+
+// Register Drag and Drop support for a window
+extern bool DragDrop_Register( HWND hwnd );
+extern bool UndoManager_Init();
+
 
 HWND gHWND = nullptr;
 
@@ -316,9 +320,20 @@ bool Plat_IsKeyPressed( Key key )
 
 bool Plat_Init()
 {
+	// allow for wchar_t to be printed in console
 	setlocale( LC_ALL, "" );
 
-	DragDrop_Init();
+	if ( !UndoManager_Init() )
+	{
+		printf( "Plat_Init(): Failed to Initialize UndoManager\n" );
+		return false;
+	}
+
+	if ( OleInitialize( NULL ) != S_OK )
+	{
+		printf( "Plat_Init(): Failed to Initialize Ole\n" );
+		return false;
+	}
 
 	WNDCLASSEX wc     = { 0 };
 	ZeroMemory( &wc, sizeof( wc ) );
@@ -508,58 +523,6 @@ void Plat_OpenFileProperties( const fs::path& file )
 	{
 		wprintf( L"Failed to open File Properties for file: %s\n", file.c_str() );
 	}
-}
-
-bool Plat_DeleteFile( const fs::path& file, bool showConfirm )
-{
-	TCHAR Buffer[ 2048 + 4 ];
-
-	wcsncpy_s( Buffer, 2048 + 4, file.c_str(), 2048 );
-	Buffer[ wcslen( Buffer ) + 1 ] = 0;  //Double-Null-Termination
-
-	SHFILEOPSTRUCT s;
-	s.hwnd                  = gHWND;
-	s.wFunc                 = FO_DELETE;
-	s.pFrom                 = Buffer;
-	s.pTo                   = NULL;
-	s.fFlags                = FOF_ALLOWUNDO;
-	s.fAnyOperationsAborted = false;
-	s.hNameMappings         = NULL;
-	s.lpszProgressTitle     = NULL;
-
-	if ( showConfirm )
-		s.fFlags |= FOF_SILENT;
-
-	int rc = SHFileOperation( &s );
-
-	if ( rc != 0 )
-		wprintf( L"Failed To Delete File: %s\n", file.c_str() );
-	else
-		wprintf( L"Deleted File: %s\n", file.c_str() );
-
-	return ( rc == 0 );
-}
-
-// Undo/Redo
-
-bool Plat_CanUndo()
-{
-	return true;
-}
-
-bool Plat_CanRedo()
-{
-	return true;
-}
-
-bool Plat_Undo()
-{
-	return true;
-}
-
-bool Plat_Redo()
-{
-	return true;
 }
 
 std::USTRING Plat_ToUnicode( const char* spStr )

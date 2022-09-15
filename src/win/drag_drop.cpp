@@ -17,8 +17,6 @@
 #include <shlobj_core.h> 
 #include <windowsx.h>  // GET_X_LPARAM/GET_Y_LPARAM
 
-#include "drag_drop.h"
-
 
 ULONG gDropFormats[] = {
 	CF_HDROP,  // file drop
@@ -195,13 +193,6 @@ std::vector< ImgDropTarget > gTargets;
 
 
 // ---------------------------------------------------------------------
-
-
-bool DragDrop_Init()
-{
-	// init OLE
-	return OleInitialize( NULL ) == S_OK;
-}
 
 
 bool DragDrop_Register( HWND hwnd )

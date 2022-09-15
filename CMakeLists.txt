@@ -21,6 +21,8 @@ set( SRC_FILES
   src/ui/imagelist.h
   src/ui/imageview.cpp
   src/ui/imageview.h
+  src/ui/settings.cpp
+  src/ui/settings.h
 
   src/formats/imageloader.cpp
   src/formats/imageloader.h
@@ -36,8 +38,8 @@ set( SRC_FILES
 if( MSVC )
 	set( PLAT_FILES
 		src/win/drag_drop.cpp
-		src/win/drag_drop.h
 		src/win/platform_win32.cpp
+		src/win/undo_manager.cpp
 	)
 else()
 	set( PLAT_FILES

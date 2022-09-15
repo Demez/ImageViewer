@@ -78,6 +78,7 @@ enum Key
 	KEY_COUNT
 };
 
+const uchar* Plat_GetError();
 
 bool         Plat_Init();
 void         Plat_Shutdown();
