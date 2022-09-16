@@ -131,17 +131,6 @@ std::wstring fs_clean_path( const std::wstring &path )
     return root + out;
 }
 
-bool fs_is_absolute( const std::wstring& path )
-{
-#ifdef _WIN32
-	return !PathIsRelative( path.c_str() );
-#elif __unix__
-	return path.starts_with( "/" );
-#else
-	return std::filesystem::path( path ).is_absolute();
-#endif
-}
-
 bool fs_is_dir( const wchar_t* path )
 {
 	struct stat s;
@@ -275,4 +264,98 @@ std::vector< char > fs_read_file( const fs::path& srFilePath )
 
 // ==============================================================================
 // Other Functions
+
+
+// very cool
+// https://stackoverflow.com/questions/55424746/is-there-an-analogous-function-to-vsnprintf-that-works-with-stdstring
+void vstring( std::string& result, const char* format, ... )
+{
+	va_list args, args_copy;
+
+	va_start( args, format );
+	va_copy( args_copy, args );
+
+	int len = vsnprintf( nullptr, 0, format, args );
+	if ( len < 0 )
+	{
+		va_end( args_copy );
+		va_end( args );
+		printf( "vstring va_args: vsnprintf failed\n" );
+		return;
+	}
+
+	if ( len > 0 )
+	{
+		result.resize( len );
+		vsnprintf( result.data(), len + 1, format, args_copy );
+	}
+
+	va_end( args_copy );
+	va_end( args );
+}
+
+void vstring( std::string& s, const char* format, va_list args )
+{
+	va_list copy;
+	va_copy( copy, args );
+	int len = std::vsnprintf( nullptr, 0, format, copy );
+	va_end( copy );
+
+	if ( len >= 0 )
+	{
+		//std::string s( std::size_t(len) + 1, '\0' );
+		s.resize( std::size_t( len ) + 1, '\0' );
+		std::vsnprintf( s.data(), s.size(), format, args );
+		s.resize( len );
+		return;
+	}
+
+	printf( "vstring va_list: vsnprintf failed\n" );
+}
+
+std::string vstring( const char* format, ... )
+{
+	std::string result;
+	va_list     args, args_copy;
+
+	va_start( args, format );
+	va_copy( args_copy, args );
+
+	int len = vsnprintf( nullptr, 0, format, args );
+	if ( len < 0 )
+	{
+		va_end( args_copy );
+		va_end( args );
+		throw std::runtime_error( "vsnprintf error" );
+	}
+
+	if ( len > 0 )
+	{
+		result.resize( len );
+		vsnprintf( result.data(), len + 1, format, args_copy );
+	}
+
+	va_end( args_copy );
+	va_end( args );
+
+	return result;
+}
+
+std::string vstring( const char* format, va_list args )
+{
+	va_list copy;
+	va_copy( copy, args );
+	int len = std::vsnprintf( nullptr, 0, format, copy );
+	va_end( copy );
+
+	if ( len >= 0 )
+	{
+		std::string s( std::size_t( len ) + 1, '\0' );
+		std::vsnprintf( s.data(), s.size(), format, args );
+		s.resize( len );
+		return s;
+	}
+
+	throw std::runtime_error( "vsnprintf error" );
+}
 

@@ -117,4 +117,9 @@ constexpr bool vec_contains( const std::vector< T >& vec, T item )
 // ==============================================================================
 // Other Functions
 
+void        vstring( std::string& output, const char* format, ... );
+void        vstring( std::string& output, const char* format, va_list args );
+
+std::string vstring( const char* format, ... );
+std::string vstring( const char* format, va_list args );
 

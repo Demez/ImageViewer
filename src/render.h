@@ -103,6 +103,7 @@ extern "C"
 	RENDER_DLL_FUNC( void, Render_DrawImGui, ImDrawData* spImDrawData );
 	RENDER_DLL_FUNC( void, Render_Present, void );
 
+	RENDER_DLL_FUNC( void, Render_SetResolution, int sWidth, int sHeight );
 	RENDER_DLL_FUNC( void, Render_SetClearColor, int r, int g, int b );
 	RENDER_DLL_FUNC( void, Render_GetClearColor, int& r, int& g, int& b );
 

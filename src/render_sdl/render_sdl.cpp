@@ -33,7 +33,7 @@ bool Render_Init( void* spWindow )
 
 	if ( !( gWindow = SDL_CreateWindowFrom( spWindow ) ) )
 	{
-		printf( "Failed to create SDL_Window from HWDN: %s\n", SDL_GetError() );
+		printf( "Failed to create SDL_Window from HWND: %s\n", SDL_GetError() );
 		return false;
 	}
 	
@@ -70,13 +70,21 @@ void Render_NewFrame()
 
 void Render_DrawImGui( ImDrawData* spImDrawData )
 {
-	ImGui_ImplSDLRenderer_RenderDrawData( spImDrawData );
 }
 
 
 void Render_Present()
 {
+	ImGui::Render();
+	ImGui_ImplSDLRenderer_RenderDrawData( ImGui::GetDrawData() );
 	SDL_RenderPresent( gRenderer );
+}
+
+
+void Render_SetResolution( int sWidth, int sHeight )
+{
+	// gWidth  = sWidth;
+	// gHeight = sHeight;
 }
 
 

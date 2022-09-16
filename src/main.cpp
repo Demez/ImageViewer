@@ -24,6 +24,7 @@ Render_NewFrame_t      Render_NewFrame      = 0;
 Render_DrawImGui_t     Render_DrawImGui     = 0;
 Render_Present_t       Render_Present       = 0;
 
+Render_SetResolution_t Render_SetResolution = 0;
 Render_SetClearColor_t Render_SetClearColor = 0;
 Render_GetClearColor_t Render_GetClearColor = 0;
 
@@ -44,10 +45,21 @@ bool LoadRenderer()
 {
 	// printf( "Failed to Init Renderer!!\n" );
 
-	if ( !( gRenderer = Plat_LoadLibrary( _T("RenderSDL") EXT_DLL ) ) )
+	if ( Args_Has( _T("-vk") ) )
 	{
-		printf( "Failed to Load Renderer!!\n" );
-		return false;
+		if ( !( gRenderer = Plat_LoadLibrary( _T("render_vk") EXT_DLL ) ) )
+		{
+			printf( "Failed to Load Renderer!!\n" );
+			return false;
+		}
+	}
+	else
+	{
+		if ( !( gRenderer = Plat_LoadLibrary( _T("render_sdl") EXT_DLL ) ) )
+		{
+			printf( "Failed to Load Renderer!!\n" );
+			return false;
+		}
 	}
 
 	LOAD_RENDER_FUNC( Render_Init );
@@ -57,6 +69,7 @@ bool LoadRenderer()
 	LOAD_RENDER_FUNC( Render_DrawImGui );
 	LOAD_RENDER_FUNC( Render_Present );
 
+	LOAD_RENDER_FUNC( Render_SetResolution );
 	LOAD_RENDER_FUNC( Render_SetClearColor );
 	LOAD_RENDER_FUNC( Render_GetClearColor );
 
@@ -273,11 +286,6 @@ void Main_WindowDraw()
 	// ----------------------------------------------------------------------
 	// Rendering
 
-	ImGui::Render();
-	Render_DrawImGui( ImGui::GetDrawData() );
-
-	ImageList_Draw2();
-
 	Render_Present();
 
 	gCanDraw = true;
@@ -342,7 +350,7 @@ int entry()
 		// if ( gShouldDraw )
 			Main_WindowDraw();
 
-		Plat_Sleep( 0.5 );
+		Plat_Sleep( 5 );
 
 		gShouldDraw = false;
 		gCanDraw    = Plat_WindowOpen();

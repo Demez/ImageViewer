@@ -7,10 +7,6 @@ set(
 	imgui.h
 	imgui_demo.cpp
 	imgui_draw.cpp
-	imgui_impl_sdlrenderer.cpp
-	imgui_impl_sdlrenderer.h
-	imgui_impl_win32.cpp
-	imgui_impl_win32.h
 	imgui_internal.h
 	imgui_tables.cpp
 	imgui_widgets.cpp
@@ -19,14 +15,23 @@ set(
 	imstb_truetype.h
 )
 
-include( "../core.cmake" )
-include( "../sdl2.cmake" )
+if( MSVC )
+	set( IMGUI_PLAT_FILES
+		imgui_impl_win32.cpp
+		imgui_impl_win32.h
+	)
+else()
+	set( IMGUI_PLAT_FILES
+	)
+endif()
+
+include( ../core.cmake )
 
 add_library(
 	ImGui SHARED
-	${IMGUI_FILES} )
-	
-target_link_libraries( ImGui SDL2 )
+	${IMGUI_FILES}
+	${IMGUI_PLAT_FILES}
+)
 
 set_target_properties(
 	ImGui PROPERTIES

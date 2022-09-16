@@ -2,13 +2,12 @@ cmake_minimum_required( VERSION 3.18 FATAL_ERROR )
 
 project( ImageViewer )
 
-add_subdirectory( imgui )
-add_subdirectory( src/render_sdl )
-
 set( SRC_FILES
   src/main.cpp
   src/folder_info.cpp
   src/folder_info.h
+  src/log.cpp
+  src/log.h
   src/util.cpp
   src/util.h
   src/args.cpp
@@ -37,11 +36,11 @@ set( SRC_FILES
 
 if( MSVC )
 	set( PLAT_FILES
-		src/win/drag_drop.cpp
-		src/win/folder_monitor.cpp
-		src/win/platform_win32.cpp
-		src/win/platform_win32.h
-		src/win/undo_manager.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/win/drag_drop.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/win/folder_monitor.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/win/platform_win32.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/win/platform_win32.h
+		${CMAKE_CURRENT_LIST_DIR}/src/win/undo_manager.cpp
 	)
 else()
 	set( PLAT_FILES
@@ -49,7 +48,6 @@ else()
 endif()
 
 include( core.cmake )
-include( sdl2.cmake )  # stupid cmake making this program need SDL2
 
 set( JXL_DIR "${CMAKE_CURRENT_LIST_DIR}/thirdparty/libjxl" )
 
@@ -132,4 +130,9 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 
 	endif()
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
+
+
+add_subdirectory( imgui )
+add_subdirectory( src/render_sdl )
+add_subdirectory( src/render_vk )
 

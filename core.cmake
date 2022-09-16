@@ -22,10 +22,14 @@ set( CMAKE_SHARED_LIBRARY_PREFIX "" )
 
 set_property( GLOBAL PROPERTY PREFIX "" )
 
+set( IMGUI_DIR "${CMAKE_CURRENT_LIST_DIR}/imgui" )
+
 include_directories(
-	"${CMAKE_CURRENT_LIST_DIR}/imgui"
+	"${IMGUI_DIR}"
 	"${CMAKE_CURRENT_LIST_DIR}/src"
 )
+
+add_compile_definitions( "nuts=once" )
 
 # Compiler/Platform specifc options
 if( MSVC )

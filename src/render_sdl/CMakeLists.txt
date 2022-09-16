@@ -1,10 +1,14 @@
 cmake_minimum_required( VERSION 3.18 FATAL_ERROR )
 
-set( SRC_FILES
-  render_sdl.cpp
-)
-
 include( ../../core.cmake )
+
+set( SRC_FILES
+	render_sdl.cpp
+	
+	# imgui files
+	${IMGUI_DIR}/imgui_impl_sdlrenderer.cpp
+	${IMGUI_DIR}/imgui_impl_sdlrenderer.h
+)
 
 add_compile_definitions( "RENDER_DLL" )
 
@@ -17,8 +21,14 @@ link_directories( "../../thirdparty/SDL2/lib/x64" )
 
 add_library( RenderSDL SHARED ${SRC_FILES} )
 
+set_target_properties(
+	RenderSDL PROPERTIES
+	OUTPUT_NAME render_sdl
+)
+
 target_link_libraries(
 	RenderSDL
+	PRIVATE
 	SDL2
 	ImGui
 )
