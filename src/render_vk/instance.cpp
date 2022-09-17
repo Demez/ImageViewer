@@ -47,7 +47,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VK_DebugCallback( VkDebugUtilsMessageSeverityFlag
 	if ( messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT )
 	{
 		std::string formatted;
-		vstring( formatted, "%s\n\n", pCallbackData->pMessage );
+		vstring( formatted, "\n%s\n\n", pCallbackData->pMessage );
 		printf( formatted.c_str() );
 	}
 
@@ -162,12 +162,12 @@ bool VK_CreateInstance()
 	std::vector< VkExtensionProperties > extProps( extensionCount );
 	vkEnumerateInstanceExtensionProperties( NULL, &extensionCount, extProps.data() );
 
-	printf( "%d Vulkan extensions available:\n", extensionCount );
-
-	for ( const auto& ext : extProps )
-		printf( "\t%s\n", ext.extensionName );
-
-	printf( "\n" );
+	// printf( "%d Vulkan extensions available:\n", extensionCount );
+	// 
+	// for ( const auto& ext : extProps )
+	// 	printf( "\t%s\n", ext.extensionName );
+	// 
+	// printf( "\n" );
 
 	if ( gEnableValidationLayers && VK_CreateValidationLayers() != VK_SUCCESS )
 		LogFatal( "Failed to create validation layers!" );

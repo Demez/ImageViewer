@@ -63,37 +63,6 @@ VkExtent2D ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& srCapabilities )
 }
 
 
-std::vector< VkImageView > CreateImageViews( const std::vector< VkImage >& srImages )
-{
-	std::vector< VkImageView > views;
-	views.resize( srImages.size() );
-
-	for ( int i = 0; i < srImages.size(); ++i )
-	{
-		VkImageViewCreateInfo aImageViewInfo           = {};
-		aImageViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		aImageViewInfo.pNext                           = nullptr;
-		aImageViewInfo.flags                           = 0;
-		aImageViewInfo.image                           = srImages[ i ];
-		aImageViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-		aImageViewInfo.format                          = gColorFormat;
-		aImageViewInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		aImageViewInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		aImageViewInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		aImageViewInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		aImageViewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		aImageViewInfo.subresourceRange.baseMipLevel   = 0;
-		aImageViewInfo.subresourceRange.levelCount     = 1;
-		aImageViewInfo.subresourceRange.baseArrayLayer = 0;
-		aImageViewInfo.subresourceRange.layerCount     = 1;
-
-		VK_CheckResult( vkCreateImageView( VK_GetDevice(), &aImageViewInfo, nullptr, &views[ i ] ), "Failed to create image view!" );
-	}
-
-	return views;
-}
-
-
 void VK_CreateSwapchain()
 {
 	SwapChainSupportInfo swapChainSupport = VK_CheckSwapChainSupport( VK_GetPhysicalDevice() );
@@ -168,8 +137,6 @@ void VK_CreateSwapchain()
 
 		VK_CheckResult( vkCreateImageView( VK_GetDevice(), &aImageViewInfo, nullptr, &gImageViews[ i ] ), "Failed to create image view!" );
 	}
-
-	// aImageViews = CreateImageViews( aImages );
 }
 
 
@@ -178,17 +145,11 @@ void VK_DestroySwapchain()
 	for ( auto& imgView : gImageViews )
 		vkDestroyImageView( VK_GetDevice(), imgView, nullptr );
 	
-	// destroyed with vkDestroySwapchainKHR
-	// for ( auto& img : gImages )
-	// 	vkDestroyImage( VK_GetDevice(), img, nullptr );
-
-	gImageViews.clear();
-	gImages.clear();
-
 	vkDestroySwapchainKHR( VK_GetDevice(), gSwapChain, NULL );
 
-	// VK_DestroyRenderTargets();
-	// VK_DestroyRenderPasses();
+	gImageViews.clear();
+	gImages.clear();  // destroyed with vkDestroySwapchainKHR
+
 	gSwapChain = nullptr;
 }
 

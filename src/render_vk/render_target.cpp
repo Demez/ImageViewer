@@ -84,7 +84,7 @@ void VK_CreateRenderTargetInt( RenderTarget* target, const std::vector< TextureV
 			// attachments.push_back( VK_GetSwapImageViews()[ i ] );
 
 		VkFramebufferCreateInfo framebufferInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-		framebufferInfo.renderPass      = VK_GetVkRenderPass();
+		framebufferInfo.renderPass      = VK_GetRenderPass();
 		framebufferInfo.attachmentCount = attachments.size();
 		framebufferInfo.pAttachments    = attachments.data();
 		framebufferInfo.width           = sWidth;

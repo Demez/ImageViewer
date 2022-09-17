@@ -5,7 +5,8 @@
 #include "render_vk.h"
 
 
-static uint32_t                       gDescriptorCount = 1024;
+static uint32_t                       gDescriptorCount = 128;
+static uint32_t                       gDescriptorPoolSize = 128;
 static VkDescriptorPool               gDescriptorPool;
 static std::vector< VkDescriptorSet > gDescriptorSets;
 static VkDescriptorSetLayout          gImageLayout;
@@ -14,7 +15,7 @@ static VkDescriptorSetLayout          gBufferLayout;
 
 void VK_CreateDescriptorPool()
 {
-	VkDescriptorPoolSize       aPoolSizes[]        = { { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4096 }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096 } };
+	VkDescriptorPoolSize       aPoolSizes[]        = { { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, gDescriptorPoolSize }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, gDescriptorPoolSize } };
 
 	VkDescriptorPoolCreateInfo aDescriptorPoolInfo = {};
 	aDescriptorPoolInfo.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

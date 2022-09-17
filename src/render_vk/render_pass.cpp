@@ -5,7 +5,7 @@
 #include "render_vk.h"
 
 
-static std::vector< RenderPass* > gRenderPasses;
+static std::vector< VkRenderPass > gRenderPasses;
 
 
 VkFormat VK_GetColorFormat()
@@ -20,10 +20,13 @@ VkFormat VK_GetDepthFormat()
 }
 
 
-RenderPass::RenderPass( const std::vector< VkAttachmentDescription >& srAttachments,
-                        const std::vector< VkSubpassDescription >&    srSubpasses,
-                        const std::vector< VkSubpassDependency >&     srDependencies )
+VkRenderPass VK_CreateRenderPass(
+	const std::vector< VkAttachmentDescription >& srAttachments,
+	const std::vector< VkSubpassDescription >&    srSubpasses,
+	const std::vector< VkSubpassDependency >&     srDependencies )
 {
+	VkRenderPass& renderPass = gRenderPasses.emplace_back();
+
 	VkRenderPassCreateInfo renderPassInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 	renderPassInfo.attachmentCount = static_cast< uint32_t >( srAttachments.size() );
 	renderPassInfo.pAttachments    = srAttachments.data();
@@ -32,17 +35,19 @@ RenderPass::RenderPass( const std::vector< VkAttachmentDescription >& srAttachme
 	renderPassInfo.dependencyCount = static_cast< uint32_t >( srDependencies.size() );
 	renderPassInfo.pDependencies   = srDependencies.data();
 
-	VK_CheckResult( vkCreateRenderPass( VK_GetDevice(), &renderPassInfo, nullptr, &aRenderPass ), "Failed to create render pass!" );
+	VK_CheckResult( vkCreateRenderPass( VK_GetDevice(), &renderPassInfo, nullptr, &renderPass ), "Failed to create render pass!" );
+
+	return renderPass;
 }
 
 
-RenderPass::~RenderPass()
+void VK_DestroyRenderPass( VkRenderPass& srRenderPass )
 {
-	vkDestroyRenderPass( VK_GetDevice(), aRenderPass, nullptr );
+	vkDestroyRenderPass( VK_GetDevice(), srRenderPass, nullptr );
 }
 
 
-std::vector< RenderPass* >& GetRenderPasses()
+std::vector< VkRenderPass >& GetRenderPasses()
 {
 	if ( gRenderPasses.size() )
 		return gRenderPasses;
@@ -131,9 +136,8 @@ std::vector< RenderPass* >& GetRenderPasses()
      *    Either make this somehow not destructable or find a better way
      *    to do this.
      */
-	auto                                   pRenderPass  = new RenderPass( attachments, subpasses, dependencies );
 
-	gRenderPasses.push_back( pRenderPass );
+	auto                                   pRenderPass  = VK_CreateRenderPass( attachments, subpasses, dependencies );
 
 	return gRenderPasses;
 }
@@ -157,29 +161,19 @@ void VK_DestroyRenderPasses()
 {
 	for ( auto& renderPass : gRenderPasses )
 	{
-		delete renderPass;
+		if ( renderPass )
+			vkDestroyRenderPass( VK_GetDevice(), renderPass, nullptr );
 	}
 
 	gRenderPasses.clear();
 }
 
 
-RenderPass* VK_GetRenderPass()
+VkRenderPass VK_GetRenderPass()
 {
 	for ( auto& renderPass : GetRenderPasses() )
 	{
 		return renderPass;
-	}
-
-	return nullptr;
-}
-
-
-VkRenderPass VK_GetVkRenderPass()
-{
-	for ( auto& renderPass : GetRenderPasses() )
-	{
-		return renderPass->aRenderPass;
 	}
 
 	return nullptr;

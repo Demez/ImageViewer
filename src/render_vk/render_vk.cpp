@@ -11,12 +11,15 @@
 #include <unordered_map>
 
 
-int gWidth  = 120;
-int gHeight = 720;
+int                  gWidth  = 1280;
+int                  gHeight = 720;
 
-float gClearR = 0.f;
-float gClearG = 0.f;
-float gClearB = 0.f;
+float                gClearR = 0.f;
+float                gClearG = 0.f;
+float                gClearB = 0.f;
+
+static VkCommandPool gSingleTime;
+static VkCommandPool gPrimary;
 
 
 char const* VKString( VkResult sResult )
@@ -93,6 +96,43 @@ VkSampleCountFlagBits VK_GetMSAASamples()
 }
 
 
+void VK_CreateCommandPool( VkCommandPool& sCmdPool, VkCommandPoolCreateFlags sFlags )
+{
+	QueueFamilyIndices      q = VK_FindQueueFamilies( VK_GetPhysicalDevice() );
+
+	VkCommandPoolCreateInfo aCommandPoolInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+	aCommandPoolInfo.pNext            = nullptr;
+	aCommandPoolInfo.flags            = sFlags;
+	aCommandPoolInfo.queueFamilyIndex = q.aGraphicsFamily;
+
+	VK_CheckResult( vkCreateCommandPool( VK_GetDevice(), &aCommandPoolInfo, nullptr, &sCmdPool ), "Failed to create command pool!" );
+}
+
+
+void VK_DestroyCommandPool( VkCommandPool& srPool )
+{
+	vkDestroyCommandPool( VK_GetDevice(), srPool, nullptr );
+}
+
+
+void VK_ResetCommandPool( VkCommandPool& srPool, VkCommandPoolResetFlags sFlags )
+{
+	VK_CheckResult( vkResetCommandPool( VK_GetDevice(), srPool, sFlags ), "Failed to reset command pool!" );
+}
+
+
+VkCommandPool& VK_GetSingleTimeCommandPool()
+{
+	return gSingleTime;
+}
+
+
+VkCommandPool& VK_GetPrimaryCommandPool()
+{
+	return gPrimary;
+}
+
+
 bool VK_InitImGui()
 {
 	ImGui_ImplVulkan_InitInfo init_info{};
@@ -106,11 +146,8 @@ bool VK_InitImGui()
 	init_info.MSAASamples     = VK_GetMSAASamples();
 	init_info.CheckVkResultFn = VK_CheckResult;
 
-	// maybe don't use resolve on imgui renderpass???? idk
-	if ( !ImGui_ImplVulkan_Init( &init_info, VK_GetVkRenderPass() ) )
-	{
+	if ( !ImGui_ImplVulkan_Init( &init_info, VK_GetRenderPass() ) )
 		return false;
-	}
 
 	VK_SingleCommand( []( VkCommandBuffer c ) { ImGui_ImplVulkan_CreateFontsTexture( c ); } );
 
@@ -137,7 +174,9 @@ bool Render_Init( void* spWindow )
 	VK_CreateCommandPool( VK_GetPrimaryCommandPool() );
 
 	VK_CreateSwapchain();
-	VK_CreateDrawThreads();
+	VK_CreateFences();
+	VK_CreateSemaphores();
+
 	VK_AllocateCommands();
 	
 	if ( !VK_InitImGui() )
@@ -156,9 +195,10 @@ void Render_Shutdown()
 	VK_DestroyInstance();
 	VK_DestroySurface();
 	VK_DestroyDescSets();
+	VK_DestroySwapchain();
+	VK_FreeCommands();
 	VK_DestroyCommandPool( VK_GetSingleTimeCommandPool() );
 	VK_DestroyCommandPool( VK_GetPrimaryCommandPool() );
-	VK_DestroySwapchain();
 }
 
 

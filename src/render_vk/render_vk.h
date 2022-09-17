@@ -58,24 +58,6 @@ struct RenderTarget
 };
 
 
-struct RenderPass
-{
-	VkRenderPass       aRenderPass;
-	VkFormat           aFormat;
-	VkExtent2D         aExtent;
-	VkImageViewType    aViewType;
-	VkImageAspectFlags aAspectFlags;
-	VkImageView        aView;
-
-	RenderPass( const std::vector< VkAttachmentDescription >& srAttachments,
-	            const std::vector< VkSubpassDescription >&    srSubpasses,
-	            const std::vector< VkSubpassDependency >&     srDependencies );
-	~RenderPass();
-
-	const constexpr VkRenderPass GetRenderPass() { return aRenderPass; }
-};
-
-
 // --------------------------------------------------------------------------------------
 // General
 
@@ -157,22 +139,22 @@ void                       VK_ResetCommandPool( VkCommandPool& srPool, VkCommand
 VkCommandPool&             VK_GetSingleTimeCommandPool();
 VkCommandPool&             VK_GetPrimaryCommandPool();
 
-void                       VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc );
-
 
 // --------------------------------------------------------------------------------------
 // Render Pass
 
 void                       VK_DestroyRenderPasses();
-RenderPass*                VK_GetRenderPass();
-VkRenderPass               VK_GetVkRenderPass();
+VkRenderPass               VK_GetRenderPass();
 
 
 // --------------------------------------------------------------------------------------
 // Present
 
-void                       VK_CreateDrawThreads();
+void                       VK_CreateFences();
+void                       VK_CreateSemaphores();
 void                       VK_AllocateCommands();
+void                       VK_FreeCommands();
+void                       VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc );
 void                       VK_RecordCommands();
 void                       VK_Present();
 
