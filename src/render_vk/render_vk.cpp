@@ -89,10 +89,7 @@ void VK_CheckResult( VkResult sResult )
 
 VkSampleCountFlagBits VK_GetMSAASamples()
 {
-	// stupid validation layer, can't use 1 sample count
-	// https://vulkan.lunarg.com/doc/view/1.2.182.0/windows/1.2-extensions/vkspec.html#VUID-VkSubpassDescription-pResolveAttachments-00848
-	// return VK_SAMPLE_COUNT_1_BIT;
-	return VK_SAMPLE_COUNT_2_BIT;
+	return VK_SAMPLE_COUNT_1_BIT;
 }
 
 

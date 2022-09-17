@@ -69,11 +69,18 @@ void VK_CreateRenderTargetInt( RenderTarget* target, const std::vector< TextureV
 	for ( u32 i = 0; i < VK_GetSwapImageCount(); ++i )
 	{
 		std::vector< VkImageView > attachments;
-		for ( auto image : srImages )
-			attachments.push_back( image->aImageView );
 
 		if ( srSwapImages.size() )
 			attachments.push_back( srSwapImages[ i ] );
+		// attachments.push_back( VK_GetSwapImageViews()[ i ] );
+
+		// for ( auto image : srImages )
+		// 	attachments.push_back( image->aImageView );
+		attachments.push_back( srImages[1]->aImageView );
+
+		// MSAA: push swap image if you want msaa in the future
+		 // if ( srSwapImages.size() )
+		 //	attachments.push_back( srSwapImages[ i ] );
 			// attachments.push_back( VK_GetSwapImageViews()[ i ] );
 
 		VkFramebufferCreateInfo framebufferInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -260,9 +267,9 @@ RenderTarget* CreateBackBuffer()
 	color.samples               = VK_GetMSAASamples();
 	color.tiling                = VK_IMAGE_TILING_OPTIMAL;
 	// DEMEZ TEST
-	color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	// color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	// color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-	// color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	// color.usage                 = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
 	color.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
 	color.queueFamilyIndexCount = 0;
@@ -350,7 +357,6 @@ RenderTarget* CreateBackBuffer()
 
 	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &depthView, nullptr, &depthTex->aImageView ), "Failed to create depth image view!" );
 
-	// colorTex         = gTextures[ 0 ];  // ????????????
 	RenderTarget* rt = VK_CreateRenderTarget( { colorTex, depthTex }, VK_GetSwapExtent().width, VK_GetSwapExtent().height, VK_GetSwapImageViews() );
 
 	return rt;

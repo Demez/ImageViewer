@@ -79,34 +79,35 @@ std::vector< RenderPass* >& GetRenderPasses()
 	depthAttachment.finalLayout                         = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	depthAttachment.samples                             = VK_GetMSAASamples();
 
-	VkAttachmentDescription colorAttachmentResolve      = {};
-	colorAttachmentResolve.format                       = VK_GetSwapFormat();
-	colorAttachmentResolve.samples                      = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentResolve.loadOp                       = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentResolve.stencilLoadOp                = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentResolve.stencilStoreOp               = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentResolve.initialLayout                = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentResolve.finalLayout                  = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// VkAttachmentDescription colorAttachmentResolve      = {};
+	// colorAttachmentResolve.format                       = VK_GetSwapFormat();
+	// colorAttachmentResolve.samples                      = VK_SAMPLE_COUNT_1_BIT;
+	// colorAttachmentResolve.loadOp                       = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorAttachmentResolve.storeOp                      = VK_ATTACHMENT_STORE_OP_STORE;
+	// colorAttachmentResolve.stencilLoadOp                = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	// colorAttachmentResolve.stencilStoreOp               = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	// colorAttachmentResolve.initialLayout                = VK_IMAGE_LAYOUT_UNDEFINED;
+	// colorAttachmentResolve.finalLayout                  = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference colorAttachmentRef            = {};
 	colorAttachmentRef.attachment                       = 0;
 	colorAttachmentRef.layout                           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// colorAttachmentRef.layout                           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference depthAttachmentRef            = {};
 	depthAttachmentRef.attachment                       = 1;
 	depthAttachmentRef.layout                           = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference colorAttachmentResolveRef     = {};
-	colorAttachmentResolveRef.attachment                = 2;
-	colorAttachmentResolveRef.layout                    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	// VkAttachmentReference colorAttachmentResolveRef     = {};
+	// colorAttachmentResolveRef.attachment                = 2;
+	// colorAttachmentResolveRef.layout                    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass                        = {};
 	subpass.pipelineBindPoint                           = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount                        = 1;
 	subpass.pColorAttachments                           = &colorAttachmentRef;
 	subpass.pDepthStencilAttachment                     = &depthAttachmentRef;
-	subpass.pResolveAttachments                         = &colorAttachmentResolveRef;
+	// subpass.pResolveAttachments                         = &colorAttachmentResolveRef;
 
 	VkSubpassDependency dependency                      = {};
 	dependency.srcSubpass                               = VK_SUBPASS_EXTERNAL;
@@ -119,7 +120,8 @@ std::vector< RenderPass* >& GetRenderPasses()
 	dependency.dstAccessMask                            = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	// dependency.dstAccessMask               = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	std::vector< VkAttachmentDescription > attachments  = { colorAttachment, depthAttachment, colorAttachmentResolve };
+	// std::vector< VkAttachmentDescription > attachments  = { colorAttachment, depthAttachment, colorAttachmentResolve };
+	std::vector< VkAttachmentDescription > attachments  = { colorAttachment, depthAttachment };
 	std::vector< VkSubpassDescription >    subpasses    = { subpass };
 	std::vector< VkSubpassDependency >     dependencies = { dependency };
 
