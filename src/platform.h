@@ -89,7 +89,7 @@ void         Plat_Update();
 
 void         Plat_GetMouseDelta( int& xrel, int& yrel );
 void         Plat_GetMousePos( int& xrel, int& yrel );
-int          Plat_GetMouseScroll();
+char         Plat_GetMouseScroll();
 
 void         Plat_SetMouseCapture( bool capture );
 

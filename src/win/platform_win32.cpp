@@ -26,7 +26,7 @@ HWND gHWND = nullptr;
 int  gMouseDelta[2];
 int  gMousePos[2];
 int  gMousePosPrev[2];
-int  gMouseScroll;
+char gMouseScroll;
 
 bool gWindowFocused;
 
@@ -316,7 +316,7 @@ void Plat_GetMousePos( int& xrel, int& yrel )
 }
 
 
-int Plat_GetMouseScroll()
+char Plat_GetMouseScroll()
 {
 	return gMouseScroll;
 }
@@ -377,7 +377,7 @@ bool Plat_Init()
 	wc.hCursor       = LoadCursor( NULL, IDC_ARROW );
 	wc.hIcon         = LoadIcon( NULL, IDI_APPLICATION );
 	wc.hIconSm       = LoadIcon( 0, IDI_APPLICATION );
-	// wc.hbrBackground = (HBRUSH)GetStockObject( DKGRAY_BRUSH );  // TODO: remove me
+	wc.hbrBackground = (HBRUSH)GetStockObject( BLACK_BRUSH );  // does this affect perf? i hope not
 	wc.style         = CS_HREDRAW | CS_VREDRAW;  // redraw if size changes
 	wc.lpszClassName = L"demez_imgviewer";
 	wc.lpszMenuName  = 0;
@@ -521,7 +521,8 @@ void Plat_SetWindowTitle( const std::USTRING& srTitle )
 
 void Plat_SetMinWindowSize( int sWidth, int sHeight )
 {
-
+	gMinWidth = sWidth;
+	gMinWidth = sHeight;
 }
 
 
