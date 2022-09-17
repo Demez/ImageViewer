@@ -24,14 +24,13 @@ RenderPass::RenderPass( const std::vector< VkAttachmentDescription >& srAttachme
                         const std::vector< VkSubpassDescription >&    srSubpasses,
                         const std::vector< VkSubpassDependency >&     srDependencies )
 {
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount        = static_cast< uint32_t >( srAttachments.size() );
-	renderPassInfo.pAttachments           = srAttachments.data();
-	renderPassInfo.subpassCount           = static_cast< uint32_t >( srSubpasses.size() );
-	renderPassInfo.pSubpasses             = srSubpasses.data();
-	renderPassInfo.dependencyCount        = static_cast< uint32_t >( srDependencies.size() );
-	renderPassInfo.pDependencies          = srDependencies.data();
+	VkRenderPassCreateInfo renderPassInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+	renderPassInfo.attachmentCount = static_cast< uint32_t >( srAttachments.size() );
+	renderPassInfo.pAttachments    = srAttachments.data();
+	renderPassInfo.subpassCount    = static_cast< uint32_t >( srSubpasses.size() );
+	renderPassInfo.pSubpasses      = srSubpasses.data();
+	renderPassInfo.dependencyCount = static_cast< uint32_t >( srDependencies.size() );
+	renderPassInfo.pDependencies   = srDependencies.data();
 
 	VK_CheckResult( vkCreateRenderPass( VK_GetDevice(), &renderPassInfo, nullptr, &aRenderPass ), "Failed to create render pass!" );
 }

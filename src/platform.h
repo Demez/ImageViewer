@@ -81,6 +81,8 @@ enum Key
 
 const uchar* Plat_GetError();
 
+void         Plat_ShowMessageBox();  // NOT IMPLEMENTED YET
+
 bool         Plat_Init();
 void         Plat_Shutdown();
 void         Plat_Update();
@@ -97,6 +99,7 @@ bool         Plat_IsKeyPressed( Key key ); //
 void*        Plat_GetWindow();
 void         Plat_GetWindowSize( int& srWidth, int& srHeight );
 void         Plat_SetWindowTitle( const std::USTRING& srTitle );
+void         Plat_SetMinWindowSize( int sWidth, int sHeight );
 bool         Plat_WindowOpen();
 bool         Plat_WindowFocused(); 
 
@@ -107,7 +110,7 @@ void         Plat_BrowseToFile( const std::filesystem::path& file );
 void         Plat_OpenFileProperties( const std::filesystem::path& file );
 bool         Plat_DeleteFile( const std::filesystem::path& file, bool showConfirm = true );
 
-// Undo/Redo support
+// Undo/Redo support (MOVE TO MAIN CODE, THIS IS NOT PLATFORM SPECIFIC THE WAY I DO THIS HERE)
 bool         Plat_CanUndo();
 bool         Plat_CanRedo();
 bool         Plat_Undo();

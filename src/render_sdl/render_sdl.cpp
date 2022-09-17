@@ -23,6 +23,8 @@ std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
 
 bool Render_Init( void* spWindow )
 {
+	SDL_LogSetAllPriority( SDL_LOG_PRIORITY_VERBOSE );
+
 	SDL_Init( SDL_INIT_VIDEO );
 
 	if ( spWindow == nullptr )
@@ -68,7 +70,7 @@ void Render_NewFrame()
 }
 
 
-void Render_DrawImGui( ImDrawData* spImDrawData )
+void Render_Reset()
 {
 }
 

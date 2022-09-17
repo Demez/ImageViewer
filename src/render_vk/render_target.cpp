@@ -8,8 +8,8 @@
 
 VkSampler                           gSampler = VK_NULL_HANDLE;
 
-static std::vector< RenderTarget >  gRenderTargets;
-static std::vector< TextureVK >     gTextures;
+static std::vector< RenderTarget* > gRenderTargets;
+static std::vector< TextureVK* >    gTextures;
 static RenderTarget*                gpBackBuffer = nullptr;
 
 
@@ -46,19 +46,25 @@ VkSampler& VK_GetSampler()
 }
 
 
-TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, std::vector< char > sData )
+TextureVK* VK_NewTexture()
 {
-	return &gTextures.emplace_back();
+	return gTextures.emplace_back( new TextureVK );
 }
 
 
-void VK_CreateRenderTargetInt( RenderTarget& target, const std::vector< TextureVK* >& srImages, u16 sWidth, u16 sHeight, const std::vector< VkImageView >& srSwapImages )
+TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, std::vector< char > sData )
 {
-	target.aImages.resize( srImages.size() );
-	target.aFrameBuffers.resize( srSwapImages.size() );
+	return gTextures.emplace_back( new TextureVK );
+}
+
+
+void VK_CreateRenderTargetInt( RenderTarget* target, const std::vector< TextureVK* >& srImages, u16 sWidth, u16 sHeight, const std::vector< VkImageView >& srSwapImages )
+{
+	target->aImages.resize( srImages.size() );
+	target->aFrameBuffers.resize( srSwapImages.size() );
 
 	for ( size_t i = 0; i < srImages.size(); ++i )
-		target.aImages[ i ] = srImages[ i ];
+		target->aImages[ i ] = srImages[ i ];
 
 	for ( u32 i = 0; i < VK_GetSwapImageCount(); ++i )
 	{
@@ -67,27 +73,40 @@ void VK_CreateRenderTargetInt( RenderTarget& target, const std::vector< TextureV
 			attachments.push_back( image->aImageView );
 
 		if ( srSwapImages.size() )
-			attachments.push_back( VK_GetSwapImageViews()[ i ] );
+			attachments.push_back( srSwapImages[ i ] );
+			// attachments.push_back( VK_GetSwapImageViews()[ i ] );
 
-		VkFramebufferCreateInfo framebufferInfo = {};
-		framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass              = VK_GetVkRenderPass();
-		framebufferInfo.attachmentCount         = attachments.size();
-		framebufferInfo.pAttachments            = attachments.data();
-		framebufferInfo.width                   = sWidth;
-		framebufferInfo.height                  = sHeight;
-		framebufferInfo.layers                  = 1;
+		VkFramebufferCreateInfo framebufferInfo{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+		framebufferInfo.renderPass      = VK_GetVkRenderPass();
+		framebufferInfo.attachmentCount = attachments.size();
+		framebufferInfo.pAttachments    = attachments.data();
+		framebufferInfo.width           = sWidth;
+		framebufferInfo.height          = sHeight;
+		framebufferInfo.layers          = 1;
 
-		VK_CheckResult( vkCreateFramebuffer( VK_GetDevice(), &framebufferInfo, nullptr, &target.aFrameBuffers[ i ] ), "Failed to create framebuffer" );
+		VK_CheckResult( vkCreateFramebuffer( VK_GetDevice(), &framebufferInfo, nullptr, &target->aFrameBuffers[ i ] ), "Failed to create framebuffer" );
 	}
 }
 
 
 RenderTarget* VK_CreateRenderTarget( const std::vector< TextureVK* >& srImages, u16 sWidth, u16 sHeight, const std::vector< VkImageView >& srSwapImages )
 {
-	auto& target = gRenderTargets.emplace_back();
+	auto target = gRenderTargets.emplace_back( new RenderTarget );
 	VK_CreateRenderTargetInt( target, srImages, sWidth, sHeight, srSwapImages );
-	return &target;
+	return target;
+}
+
+
+void VK_DestroyTexture( TextureVK* srTexture )
+{
+	vkDestroyImageView( VK_GetDevice(), srTexture->aImageView, nullptr );
+	vkDestroyImage( VK_GetDevice(), srTexture->aImage, nullptr );
+
+	// TODO: probably change this so i don't call delete on the texture, and maybe i can reuse this image memory somehow
+	vkFreeMemory( VK_GetDevice(), srTexture->aMemory, nullptr );
+
+	vec_remove( gTextures, srTexture );
+	delete srTexture;
 }
 
 
@@ -99,7 +118,11 @@ void VK_DestroyRenderTarget( RenderTarget* spTarget )
 	for ( auto frameBuffer : spTarget->aFrameBuffers )
 		vkDestroyFramebuffer( VK_GetDevice(), frameBuffer, nullptr );
 
-	// vec_remove( gRenderTargets, *spTarget );
+	for ( auto& texture : spTarget->aImages )
+		VK_DestroyTexture( texture );
+
+	vec_remove( gRenderTargets, spTarget );
+	delete spTarget;
 }
 
 
@@ -107,7 +130,7 @@ void VK_DestroyRenderTargets()
 {
 	for ( auto& target : gRenderTargets )
 	{
-		VK_DestroyRenderTarget( &target );
+		VK_DestroyRenderTarget( target );
 	}
 
 	gRenderTargets.clear();
@@ -119,7 +142,7 @@ void VK_RebuildRenderTargets()
 {
 	for ( auto& target : gRenderTargets )
 	{
-		VK_DestroyRenderTarget( &target );
+		VK_DestroyRenderTarget( target );
 		// VK_CreateRenderTargetInt( target, target.aImages, target.aImages[ 0 ]->aWidth, target.aImages[ 0 ]->aHeight, {} );
 	}
 }
@@ -222,7 +245,7 @@ RenderTarget* CreateBackBuffer()
      *    Our backbuffer contains 3 render operations: Color, Depth, and Resolve,
      *    so we'll make those now.
      */
-	TextureVK&        colorTex  = gTextures.emplace_back();
+	TextureVK*        colorTex = VK_NewTexture();
 	VkImageCreateInfo color;
 	color.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	color.pNext                 = nullptr;
@@ -246,10 +269,10 @@ RenderTarget* CreateBackBuffer()
 	color.pQueueFamilyIndices   = nullptr;
 	color.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	VK_CheckResult( vkCreateImage( VK_GetDevice(), &color, nullptr, &colorTex.aImage ), "Failed to create color image!" );
+	VK_CheckResult( vkCreateImage( VK_GetDevice(), &color, nullptr, &colorTex->aImage ), "Failed to create color image!" );
 
 	VkMemoryRequirements memReqs;
-	vkGetImageMemoryRequirements( VK_GetDevice(), colorTex.aImage, &memReqs );
+	vkGetImageMemoryRequirements( VK_GetDevice(), colorTex->aImage, &memReqs );
 
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType                = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -257,15 +280,15 @@ RenderTarget* CreateBackBuffer()
 	allocInfo.allocationSize       = memReqs.size;
 	allocInfo.memoryTypeIndex      = VK_GetMemoryType( memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
-	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &colorTex.aMemory ), "Failed to allocate color image memory!" );
+	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &colorTex->aMemory ), "Failed to allocate color image memory!" );
 
-	vkBindImageMemory( VK_GetDevice(), colorTex.aImage, colorTex.aMemory, 0 );
+	vkBindImageMemory( VK_GetDevice(), colorTex->aImage, colorTex->aMemory, 0 );
 
 	VkImageViewCreateInfo colorView;
 	colorView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	colorView.pNext                           = nullptr;
 	colorView.flags                           = 0;
-	colorView.image                           = colorTex.aImage;
+	colorView.image                           = colorTex->aImage;
 	colorView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
 	colorView.format                          = color.format;
 	colorView.components                      = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
@@ -275,12 +298,12 @@ RenderTarget* CreateBackBuffer()
 	colorView.subresourceRange.baseArrayLayer = 0;
 	colorView.subresourceRange.layerCount     = 1;
 
-	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &colorView, nullptr, &colorTex.aImageView ), "Failed to create color image view!" );
+	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &colorView, nullptr, &colorTex->aImageView ), "Failed to create color image view!" );
 
 	// ------------------------------------------------------
 	// Create Depth Texture
 
-	TextureVK&        depthTex = gTextures.emplace_back();
+	TextureVK*        depthTex = VK_NewTexture();
 	VkImageCreateInfo depth;
 	depth.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	depth.pNext                 = nullptr;
@@ -300,22 +323,22 @@ RenderTarget* CreateBackBuffer()
 	depth.pQueueFamilyIndices   = nullptr;
 	depth.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	VK_CheckResult( vkCreateImage( VK_GetDevice(), &depth, nullptr, &depthTex.aImage ), "Failed to create depth image!" );
+	VK_CheckResult( vkCreateImage( VK_GetDevice(), &depth, nullptr, &depthTex->aImage ), "Failed to create depth image!" );
 
-	vkGetImageMemoryRequirements( VK_GetDevice(), depthTex.aImage, &memReqs );
+	vkGetImageMemoryRequirements( VK_GetDevice(), depthTex->aImage, &memReqs );
 
 	allocInfo.allocationSize  = memReqs.size;
 	allocInfo.memoryTypeIndex = VK_GetMemoryType( memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
-	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &depthTex.aMemory ), "Failed to allocate depth image memory!" );
+	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &depthTex->aMemory ), "Failed to allocate depth image memory!" );
 
-	vkBindImageMemory( VK_GetDevice(), depthTex.aImage, depthTex.aMemory, 0 );
+	vkBindImageMemory( VK_GetDevice(), depthTex->aImage, depthTex->aMemory, 0 );
 
 	VkImageViewCreateInfo depthView;
 	depthView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	depthView.pNext                           = nullptr;
 	depthView.flags                           = 0;
-	depthView.image                           = depthTex.aImage;
+	depthView.image                           = depthTex->aImage;
 	depthView.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
 	depthView.format                          = depth.format;
 	depthView.components                      = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
@@ -325,10 +348,10 @@ RenderTarget* CreateBackBuffer()
 	depthView.subresourceRange.baseArrayLayer = 0;
 	depthView.subresourceRange.layerCount     = 1;
 
-	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &depthView, nullptr, &depthTex.aImageView ), "Failed to create depth image view!" );
+	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &depthView, nullptr, &depthTex->aImageView ), "Failed to create depth image view!" );
 
-	colorTex         = gTextures[ 0 ];  // ????????????
-	RenderTarget* rt = VK_CreateRenderTarget( { &colorTex, &depthTex }, VK_GetSwapExtent().width, VK_GetSwapExtent().height, VK_GetSwapImageViews() );
+	// colorTex         = gTextures[ 0 ];  // ????????????
+	RenderTarget* rt = VK_CreateRenderTarget( { colorTex, depthTex }, VK_GetSwapExtent().width, VK_GetSwapExtent().height, VK_GetSwapImageViews() );
 
 	return rt;
 }
@@ -350,11 +373,5 @@ RenderTarget* VK_GetBackBuffer()
 		gpBackBuffer = CreateBackBuffer();
 	}
 	return gpBackBuffer;
-}
-
-
-const std::vector< RenderTarget >& VK_GetRenderTargets()
-{
-	return gRenderTargets;
 }
 

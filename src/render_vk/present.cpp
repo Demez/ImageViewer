@@ -149,8 +149,8 @@ void VK_Present()
 	if ( res == VK_ERROR_OUT_OF_DATE_KHR )
 	{
 		// Recreate all resources.
-		VK_RebuildSwapchain();
-		return;
+		printf( "VK_Reset - vkAcquireNextImageKHR\n" );
+		VK_Reset();
 	}
 
 	else if ( res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR )
@@ -201,9 +201,9 @@ void VK_Present()
 
 	if ( res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR )
 	{
+		printf( "VK_Reset - vkQueuePresentKHR\n" );
 		vkDeviceWaitIdle( VK_GetDevice() );
-		VK_RebuildSwapchain();
-		return;
+		VK_Reset();
 	}
 	else if ( res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR )
 	{

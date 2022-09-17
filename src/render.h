@@ -100,7 +100,7 @@ extern "C"
 	RENDER_DLL_FUNC( void, Render_Shutdown, void );
 
 	RENDER_DLL_FUNC( void, Render_NewFrame, void );
-	RENDER_DLL_FUNC( void, Render_DrawImGui, ImDrawData* spImDrawData );
+	RENDER_DLL_FUNC( void, Render_Reset, void );
 	RENDER_DLL_FUNC( void, Render_Present, void );
 
 	RENDER_DLL_FUNC( void, Render_SetResolution, int sWidth, int sHeight );

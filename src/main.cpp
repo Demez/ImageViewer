@@ -21,7 +21,7 @@ Render_Init_t          Render_Init          = 0;
 Render_Shutdown_t      Render_Shutdown      = 0;
 
 Render_NewFrame_t      Render_NewFrame      = 0;
-Render_DrawImGui_t     Render_DrawImGui     = 0;
+Render_Reset_t         Render_Reset         = 0;
 Render_Present_t       Render_Present       = 0;
 
 Render_SetResolution_t Render_SetResolution = 0;
@@ -66,7 +66,7 @@ bool LoadRenderer()
 	LOAD_RENDER_FUNC( Render_Shutdown );
 
 	LOAD_RENDER_FUNC( Render_NewFrame );
-	LOAD_RENDER_FUNC( Render_DrawImGui );
+	LOAD_RENDER_FUNC( Render_Reset );
 	LOAD_RENDER_FUNC( Render_Present );
 
 	LOAD_RENDER_FUNC( Render_SetResolution );
@@ -308,6 +308,8 @@ int entry()
 		return 1;
 	}
 
+	Plat_SetMinWindowSize( 320, 240 );
+
 	StyleImGui();
 
 	if ( !Render_Init( Plat_GetWindow() ) )
@@ -320,7 +322,15 @@ int entry()
 
 	if ( Args_Count() > 1 )
 	{
-		ImageView_SetImage( Args_Get( 1 ) );
+		// still kinda shit, hmm
+		for ( int i = 1; i < Args_Count(); i++ )
+		{
+			if ( fs_is_file( Args_Get( i ).c_str() ) )
+			{
+				ImageView_SetImage( Args_Get( i ) );
+				break;
+			}
+		}
 	}
 
 	Render_SetClearColor( 48, 48, 48 );

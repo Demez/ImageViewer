@@ -15,11 +15,18 @@ static std::vector< VkImage >     gImages;
 static std::vector< VkImageView > gImageViews;
 
 
+// constexpr VkFormat                gColorFormat = VK_FORMAT_B8G8R8A8_SRGB;
+// constexpr VkColorSpaceKHR         gColorSpace  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+constexpr VkFormat                gColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
+constexpr VkColorSpaceKHR         gColorSpace  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+
 VkSurfaceFormatKHR ChooseSwapSurfaceFormat( const std::vector< VkSurfaceFormatKHR >& srAvailableFormats )
 {
 	for ( const auto& availableFormat : srAvailableFormats )
 	{
-		if ( availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR )
+		if ( availableFormat.format == gColorFormat && availableFormat.colorSpace == gColorSpace )
 		{
 			return availableFormat;
 		}
@@ -69,7 +76,7 @@ std::vector< VkImageView > CreateImageViews( const std::vector< VkImage >& srIma
 		aImageViewInfo.flags                           = 0;
 		aImageViewInfo.image                           = srImages[ i ];
 		aImageViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-		aImageViewInfo.format                          = VK_FORMAT_B8G8R8A8_SRGB;
+		aImageViewInfo.format                          = gColorFormat;
 		aImageViewInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		aImageViewInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		aImageViewInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -95,7 +102,8 @@ void VK_CreateSwapchain()
 	gPresentMode                          = ChooseSwapPresentMode( swapChainSupport.aPresentModes );
 	gExtent                               = ChooseSwapExtent( swapChainSupport.aCapabilities );
 
-	uint32_t imageCount                   = swapChainSupport.aCapabilities.minImageCount + 1;
+	// uint32_t imageCount                   = swapChainSupport.aCapabilities.minImageCount + 1;
+	uint32_t imageCount                   = swapChainSupport.aCapabilities.minImageCount;
 	if ( swapChainSupport.aCapabilities.maxImageCount > 0 && imageCount > swapChainSupport.aCapabilities.maxImageCount )
 		imageCount = swapChainSupport.aCapabilities.maxImageCount;
 
@@ -147,7 +155,7 @@ void VK_CreateSwapchain()
 		aImageViewInfo.flags                           = 0;
 		aImageViewInfo.image                           = gImages[ i ];
 		aImageViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-		aImageViewInfo.format                          = VK_FORMAT_B8G8R8A8_SRGB;
+		aImageViewInfo.format                          = gColorFormat;
 		aImageViewInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		aImageViewInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		aImageViewInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -167,32 +175,21 @@ void VK_CreateSwapchain()
 
 void VK_DestroySwapchain()
 {
-	// for ( auto& imgView : gImageViews )
-	// 	vkDestroyImageView( VK_GetDevice(), imgView, nullptr );
-	// 
+	for ( auto& imgView : gImageViews )
+		vkDestroyImageView( VK_GetDevice(), imgView, nullptr );
+	
+	// destroyed with vkDestroySwapchainKHR
 	// for ( auto& img : gImages )
 	// 	vkDestroyImage( VK_GetDevice(), img, nullptr );
 
-	vkDestroySwapchainKHR( VK_GetDevice(), gSwapChain, NULL );
-
-	VK_DestroyRenderTargets();
-	VK_DestroyRenderPasses();
-
 	gImageViews.clear();
 	gImages.clear();
+
+	vkDestroySwapchainKHR( VK_GetDevice(), gSwapChain, NULL );
+
+	// VK_DestroyRenderTargets();
+	// VK_DestroyRenderPasses();
 	gSwapChain = nullptr;
-}
-
-
-void VK_RebuildSwapchain()
-{
-	VK_DestroySwapchain();
-
-	VK_CreateSwapchain();
-
-	VK_GetRenderPass();
-
-	VK_GetBackBuffer();
 }
 
 

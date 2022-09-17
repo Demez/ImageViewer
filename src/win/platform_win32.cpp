@@ -2,6 +2,7 @@
 #include "util.h"
 #include "ui/imageview.h"
 #include "main.h"
+#include "render.h"
 #include "imgui_impl_win32.h"
 
 #include <Windows.h>
@@ -28,6 +29,9 @@ int  gMousePosPrev[2];
 int  gMouseScroll;
 
 bool gWindowFocused;
+
+int  gMinWidth             = 320;
+int  gMinHeight            = 240;
 
 
 // Ordered in the same order of the enums
@@ -236,16 +240,18 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 			break;
 		}
 
-		case WM_SETCURSOR:
+		case WM_GETMINMAXINFO:
 		{
-			//printf( "uMsg: WM_SETCURSOR\n" );
+			// Minimum window width and height
+			MINMAXINFO* minMaxInfo = (MINMAXINFO*)lParam;
+			minMaxInfo->ptMinTrackSize.x = gMinWidth;
+			minMaxInfo->ptMinTrackSize.y = gMinHeight;
 			break;
 		}
 
-		case WM_PAINT:
+		case WM_SETCURSOR:
 		{
-			ImGui_ImplWin32_NewFrame();
-			Main_WindowDraw();
+			//printf( "uMsg: WM_SETCURSOR\n" );
 			break;
 		}
 
@@ -258,6 +264,35 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		default:
 		{
 			// printf( "unregistered message: %u\n", uMsg );
+			break;
+		}
+	}
+
+	// drawing events
+	switch ( uMsg )
+	{
+		case WM_MOUSEMOVE:
+		case WM_MOUSEWHEEL:
+		case WM_LBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_MBUTTONUP:
+		case WM_RBUTTONUP:
+		case WM_SYSKEYDOWN:
+		case WM_KEYDOWN:
+		case WM_SYSKEYUP:
+		case WM_KEYUP:
+		{
+			Main_ShouldDrawWindow();
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			Render_Reset();
+			ImGui_ImplWin32_NewFrame();
+			Main_WindowDraw();
 			break;
 		}
 	}
@@ -468,9 +503,25 @@ void Plat_GetWindowSize( int& srWidth, int& srHeight )
 }
 
 
+void Plat_GetClientSize( int& srWidth, int& srHeight )
+{
+	RECT rect;
+	GetClientRect( gHWND, &rect );
+
+	srWidth  = rect.right - rect.left;
+	srHeight = rect.bottom - rect.top;
+}
+
+
 void Plat_SetWindowTitle( const std::USTRING& srTitle )
 {
 	SetWindowText( gHWND, srTitle.c_str() );
+}
+
+
+void Plat_SetMinWindowSize( int sWidth, int sHeight )
+{
+
 }
 
 

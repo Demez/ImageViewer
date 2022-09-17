@@ -120,7 +120,9 @@ void ImageView_SetImageInternal( const fs::path& path )
 	// TODO: this is a slow blocking operation on the main thread
 	// async or move this to a image loader thread and use a callback for when it's loaded
 	if ( !( gNewImageData = ImageLoader_LoadImage( gNewImagePath, gReadData ) ) )
-		return;
+	{
+		gNewImagePath.clear();
+	}
 }
 
 

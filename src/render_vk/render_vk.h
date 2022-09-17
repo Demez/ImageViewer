@@ -10,6 +10,9 @@
 struct ImageInfo;
 
 
+#define VK_COLOR_RESOLVE 1
+
+
 extern float gClearR;
 extern float gClearG;
 extern float gClearB;
@@ -81,6 +84,8 @@ char const*                VKString( VkResult sResult );
 void                       VK_CheckResult( VkResult sResult, char const* spMsg );
 void                       VK_CheckResult( VkResult sResult );
 
+void                       VK_Reset();
+
 VkSampleCountFlagBits      VK_GetMSAASamples();
 
 VkCommandBuffer            VK_GetCommandBuffer();
@@ -120,7 +125,6 @@ SwapChainSupportInfo       VK_CheckSwapChainSupport( VkPhysicalDevice sDevice );
 
 void                       VK_CreateSwapchain();
 void                       VK_DestroySwapchain();
-void                       VK_RebuildSwapchain();
 
 u32                        VK_GetSwapImageCount();
 std::vector< VkImage >     VK_GetSwapImages();
