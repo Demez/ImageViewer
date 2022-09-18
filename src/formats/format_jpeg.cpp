@@ -63,8 +63,7 @@ public:
 			return nullptr;
 		}
 
-		int pixelFmt = TJPF_RGB;
-		// int pixelFmt = TJPF_BGRA;
+		int pixelFmt = TJPF_BGRA;
 
 		srData.resize( imageInfo->aWidth * imageInfo->aHeight * tjPixelSize[ pixelFmt ] );
 
@@ -74,7 +73,7 @@ public:
 			fileData.size(),
 		    (unsigned char*)srData.data(),
 			0,
-			imageInfo->aWidth * 3,
+			imageInfo->aWidth * 4,
 			0,
 			pixelFmt,
 			TJFLAG_ACCURATEDCT
@@ -87,7 +86,7 @@ public:
 			return nullptr;
 		}
 
-		imageInfo->aFormat = FMT_RGB8;
+		imageInfo->aFormat = FMT_BGRA8;
 		// imageInfo->aFormat = FMT_RGBA8;
 		imageInfo->aBitDepth = 4;  // uhhhh
 

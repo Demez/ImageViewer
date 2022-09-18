@@ -159,6 +159,7 @@ void ImageView_LoadImage()
 	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
 	gDrawInfo.aWidth  = gpImageInfo->aWidth;
 	gDrawInfo.aHeight = gpImageInfo->aHeight;
+	gDrawInfo.aFilter = ImageFilter_Nearest;
 
 	gImagePath        = gNewImagePath;
 
@@ -226,8 +227,20 @@ bool ImageView_Update()
 
 void ImageView_Draw()
 {
-	if ( gpImageInfo )
-		Render_DrawImage( gpImageInfo, gDrawInfo );
+	if ( !gpImageInfo )
+		return;
+
+	ImGui::Text( "Current Filter: %s", gDrawInfo.aFilter == ImageFilter_Nearest ? "Nearest" : "Linear" );
+
+	if ( ImGui::Button( "TOGGLE FILTER" ) )
+	{
+		if ( gDrawInfo.aFilter == ImageFilter_Nearest )
+			gDrawInfo.aFilter = ImageFilter_Linear;
+		else
+			gDrawInfo.aFilter = ImageFilter_Nearest;
+	}
+
+	Render_DrawImage( gpImageInfo, gDrawInfo );
 }
 
 

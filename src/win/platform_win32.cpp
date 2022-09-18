@@ -28,6 +28,7 @@ int  gMousePos[2];
 int  gMousePosPrev[2];
 char gMouseScroll;
 
+bool gWindowShown;
 bool gWindowFocused;
 
 int  gMinWidth             = 320;
@@ -251,6 +252,12 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		case WM_SETCURSOR:
 		{
 			//printf( "uMsg: WM_SETCURSOR\n" );
+			break;
+		}
+
+		case WM_SHOWWINDOW:
+		{
+			gWindowShown = ( wParam == TRUE );
 			break;
 		}
 
@@ -535,6 +542,12 @@ void Plat_SetMinWindowSize( int sWidth, int sHeight )
 bool Plat_WindowOpen()
 {
 	return gHWND;
+}
+
+
+bool Plat_WindowShown()
+{
+	return gWindowShown;
 }
 
 

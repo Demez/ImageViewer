@@ -21,8 +21,19 @@ constexpr char const* gpExtensions[] = {
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 	VK_KHR_SURFACE_EXTENSION_NAME,
+#if _DEBUG
 	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+#endif
 };
+
+
+#if _DEBUG
+PFN_vkDebugMarkerSetObjectTagEXT  pfnDebugMarkerSetObjectTag;
+PFN_vkDebugMarkerSetObjectNameEXT pfnDebugMarkerSetObjectName;
+PFN_vkCmdDebugMarkerBeginEXT      pfnCmdDebugMarkerBegin;
+PFN_vkCmdDebugMarkerEndEXT        pfnCmdDebugMarkerEnd;
+PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
+#endif
 
 
 constexpr char const*           gpDeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_EXT_descriptor_indexing" };
@@ -373,6 +384,14 @@ void VK_CreateDevice()
 
 	vkGetDeviceQueue( gDevice, indices.aGraphicsFamily, 0, &gGraphicsQueue );
 	vkGetDeviceQueue( gDevice, indices.aPresentFamily, 0, &gPresentQueue );
+
+#if _DEBUG
+	pfnDebugMarkerSetObjectTag  = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkDebugMarkerSetObjectTagEXT" );
+	pfnDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkDebugMarkerSetObjectNameEXT" );
+	pfnCmdDebugMarkerBegin      = (PFN_vkCmdDebugMarkerBeginEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkCmdDebugMarkerBeginEXT" );
+	pfnCmdDebugMarkerEnd        = (PFN_vkCmdDebugMarkerEndEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkCmdDebugMarkerEndEXT" );
+	pfnCmdDebugMarkerInsert     = (PFN_vkCmdDebugMarkerInsertEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkCmdDebugMarkerInsertEXT" );
+#endif
 }
 
 

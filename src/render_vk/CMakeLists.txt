@@ -10,10 +10,10 @@ set(
 	instance.cpp
 	descriptor_set.cpp
 	swapchain.cpp
-	command_pool.cpp
 	present.cpp
 	render_pass.cpp
-	render_target.cpp
+	texture.cpp
+	shader_image.cpp
 	
 	# imgui files
 	${IMGUI_DIR}/imgui_impl_vulkan.cpp

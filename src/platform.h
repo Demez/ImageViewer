@@ -101,6 +101,7 @@ void         Plat_GetWindowSize( int& srWidth, int& srHeight );
 void         Plat_SetWindowTitle( const std::USTRING& srTitle );
 void         Plat_SetMinWindowSize( int sWidth, int sHeight );
 bool         Plat_WindowOpen();
+bool         Plat_WindowShown(); 
 bool         Plat_WindowFocused(); 
 
 void         Plat_Sleep( float ms );

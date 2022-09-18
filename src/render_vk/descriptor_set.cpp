@@ -15,7 +15,10 @@ static VkDescriptorSetLayout          gBufferLayout;
 
 void VK_CreateDescriptorPool()
 {
-	VkDescriptorPoolSize       aPoolSizes[]        = { { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, gDescriptorPoolSize }, { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, gDescriptorPoolSize } };
+	VkDescriptorPoolSize aPoolSizes[] = {
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, gDescriptorPoolSize },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, gDescriptorPoolSize }
+	};
 
 	VkDescriptorPoolCreateInfo aDescriptorPoolInfo = {};
 	aDescriptorPoolInfo.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

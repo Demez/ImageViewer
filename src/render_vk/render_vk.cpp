@@ -52,14 +52,48 @@ char const* VKString( VkResult sResult )
 			return "VK_ERROR_TOO_MANY_OBJECTS";
 		case VK_ERROR_FORMAT_NOT_SUPPORTED:
 			return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-		case VK_ERROR_SURFACE_LOST_KHR:
-			return "VK_ERROR_SURFACE_LOST_KHR";
 		case VK_ERROR_FRAGMENTED_POOL:
 			return "VK_ERROR_FRAGMENTED_POOL";
 		case VK_ERROR_UNKNOWN:
 			return "VK_ERROR_UNKNOWN";
+		case VK_ERROR_OUT_OF_POOL_MEMORY:
+			return "VK_ERROR_OUT_OF_POOL_MEMORY";
+		case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+			return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+		case VK_ERROR_FRAGMENTATION:
+			return "VK_ERROR_FRAGMENTATION";
+		case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
+			return "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS";
+		case VK_ERROR_SURFACE_LOST_KHR:
+			return "VK_ERROR_SURFACE_LOST_KHR";
 		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
 			return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+		case VK_SUBOPTIMAL_KHR:
+			return "VK_SUBOPTIMAL_KHR";
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			return "VK_ERROR_OUT_OF_DATE_KHR";
+		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+			return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+		case VK_ERROR_VALIDATION_FAILED_EXT:
+			return "VK_ERROR_VALIDATION_FAILED_EXT";
+		case VK_ERROR_INVALID_SHADER_NV:
+			return "VK_ERROR_INVALID_SHADER_NV";
+		case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
+			return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+		case VK_ERROR_NOT_PERMITTED_EXT:
+			return "VK_ERROR_NOT_PERMITTED_EXT";
+		case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+			return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+		case VK_THREAD_IDLE_KHR:
+			return "VK_THREAD_IDLE_KHR";
+		case VK_THREAD_DONE_KHR:
+			return "VK_THREAD_DONE_KHR";
+		case VK_OPERATION_DEFERRED_KHR:
+			return "VK_OPERATION_DEFERRED_KHR";
+		case VK_OPERATION_NOT_DEFERRED_KHR:
+			return "VK_OPERATION_NOT_DEFERRED_KHR";
+		case VK_PIPELINE_COMPILE_REQUIRED_EXT:
+			return "VK_PIPELINE_COMPILE_REQUIRED_EXT";
 	}
 }
 
@@ -87,6 +121,16 @@ void VK_CheckResult( VkResult sResult )
 
 	// SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "Vulkan Error", pBuf, nullptr );
 	LogFatal( pBuf );
+}
+
+
+// Copies memory to the GPU.
+void VK_memcpy( VkDeviceMemory sBufferMemory, VkDeviceSize sSize, const void* spData )
+{
+	void* pData;
+	VK_CheckResult( vkMapMemory( VK_GetDevice(), sBufferMemory, 0, sSize, 0, &pData ), "Vulkan: Failed to map memory" );
+	memcpy( pData, spData, (size_t)sSize );
+	vkUnmapMemory( VK_GetDevice(), sBufferMemory );
 }
 
 
@@ -133,6 +177,41 @@ VkCommandPool& VK_GetPrimaryCommandPool()
 }
 
 
+void VK_CreateBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem, u32 sBufferSize, VkBufferUsageFlags sUsage, int sMemBits )
+{
+	// create a vertex buffer
+	VkBufferCreateInfo aBufferInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+	aBufferInfo.size        = sBufferSize;
+	aBufferInfo.usage       = sUsage;
+	aBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VK_CheckResult( vkCreateBuffer( VK_GetDevice(), &aBufferInfo, nullptr, &srBuffer ), "Failed to create buffer" );
+
+	// allocate memory for the vertex buffer
+	VkMemoryRequirements aMemReqs;
+	vkGetBufferMemoryRequirements( VK_GetDevice(), srBuffer, &aMemReqs );
+
+	VkMemoryAllocateInfo aMemAllocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+	aMemAllocInfo.allocationSize  = aMemReqs.size;
+	aMemAllocInfo.memoryTypeIndex = VK_GetMemoryType( aMemReqs.memoryTypeBits, sMemBits );
+
+	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &aMemAllocInfo, nullptr, &srBufferMem ), "Failed to allocate buffer memory" );
+
+	// bind the vertex buffer to the device memory
+	VK_CheckResult( vkBindBufferMemory( VK_GetDevice(), srBuffer, srBufferMem, 0 ), "Failed to bind buffer" );
+}
+
+
+void VK_DestroyBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem )
+{
+	if ( srBuffer )
+		vkDestroyBuffer( VK_GetDevice(), srBuffer, nullptr );
+
+	if ( srBufferMem )
+		vkFreeMemory( VK_GetDevice(), srBufferMem, nullptr );
+}
+
+
 bool VK_InitImGui()
 {
 	ImGui_ImplVulkan_InitInfo init_info{};
@@ -155,6 +234,10 @@ bool VK_InitImGui()
 
 	return true;
 }
+
+
+// ----------------------------------------------------------------------------------
+// Render Abstraction
 
 
 bool Render_Init( void* spWindow )
@@ -185,6 +268,12 @@ bool Render_Init( void* spWindow )
 		Render_Shutdown();
 		return false;
 	}
+
+	// Load up image shader and create buffer for image mesh
+	VK_CreateImageLayout();
+	VK_CreateImageShader();
+
+	printf( "Render: Loaded Vulkan Renderer\n" );
 
 	return true;
 }
@@ -223,6 +312,7 @@ void VK_Reset()
 void Render_NewFrame()
 {
 	ImGui_ImplVulkan_NewFrame();
+	VK_ClearDrawQueue();
 }
 
 
@@ -264,97 +354,18 @@ void Render_GetClearColor( int& r, int& g, int& b )
 
 bool Render_LoadImage( ImageInfo* spInfo, std::vector< char >& srData )
 {
-#if 0
-	auto find = gImageTextures.find( spInfo );
-	
-	// Image is already loaded
-	if ( find != gImageTextures.end() )
-		return true;
-
-	int                 pitch  = spInfo->aWidth;
-	SDL_PixelFormatEnum sdlFmt = SDL_PIXELFORMAT_ABGR8888;
-
-	if ( spInfo->aFormat == FMT_RGB8 )
-	{
-		sdlFmt = SDL_PIXELFORMAT_RGB24;
-		pitch *= 3;
-	}
-	else if ( spInfo->aFormat == FMT_BGR8 )
-	{
-		sdlFmt = SDL_PIXELFORMAT_BGR24;
-		pitch *= 3;
-	}
-	else
-	{
-		pitch *= 4;
-	}
-
-	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom(
-		srData.data(), 
-		spInfo->aWidth,
-		spInfo->aHeight,
-		spInfo->aBitDepth,
-		pitch,
-		sdlFmt
-	);
-
-	if ( surf == nullptr )
-		return false;
-
-	SDL_Texture* tex = SDL_CreateTextureFromSurface( gRenderer, surf );
-	SDL_FreeSurface( surf );
-
-	if ( tex == nullptr )
-	{
-		printf( "[Render] Failed to create texture from surface: %s\n", SDL_GetError() );
-		return false;
-	}
-
-	// gImageTextures[ spInfo ] = surf;
-	gImageTextures[ spInfo ] = tex;
-
-	return true;
-#endif
-	return false;
+	return VK_CreateTexture( spInfo, srData );
 }
 
 
 void Render_FreeImage( ImageInfo* spInfo )
-{
-#if 0
-	auto find = gImageTextures.find( spInfo );
-
-	// Image is not loaded
-	if ( find == gImageTextures.end() )
-		return;
-
-	SDL_DestroyTexture( find->second );
-
-	gImageTextures.erase( spInfo );
-#endif
+{;
+	VK_DestroyTexture( spInfo );
 }
 
 
 void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 {
-#if 0
-	auto find = gImageTextures.find( spInfo );
-
-	// Image is already loaded
-	if ( find == gImageTextures.end() )
-		return;
-
-	// SDL_Surface* surf = find->second;
-	SDL_Texture* tex = find->second;
-
-	SDL_Rect dstRect{
-		.x = (int)round(srDrawInfo.aX),
-		.y = (int)round(srDrawInfo.aY),
-		.w = srDrawInfo.aWidth,
-		.h = srDrawInfo.aHeight
-	};
-
-	SDL_RenderCopy( gRenderer, tex, nullptr, &dstRect );
-#endif
+	VK_AddImageDrawInfo( spInfo, srDrawInfo );
 }
 

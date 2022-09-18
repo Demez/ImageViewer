@@ -8,6 +8,32 @@
 std::vector< IImageFormat* > gFormats;
 
 
+void ConvertRGB8ToBGR8( std::vector< char >& srData )
+{
+	char temp;
+	for ( int i = 0; i < srData.size(); i += 3 )
+	{
+		// swap R and B; raw_image[i + 1] is G, so it stays where it is.
+		temp            = srData[ i + 0 ];
+		srData[ i + 0 ] = srData[ i + 2 ];
+		srData[ i + 2 ] = temp;
+	}
+}
+
+
+void ConvertRGBA8ToBGRA8( std::vector< char >& srData )
+{
+	char temp;
+	for ( int i = 0; i < srData.size(); i += 4 )
+	{
+		// swap R and B; raw_image[i + 1] is G, so it stays where it is.
+		temp            = srData[ i + 0 ];
+		srData[ i + 0 ] = srData[ i + 2 ];
+		srData[ i + 2 ] = temp;
+	}
+}
+
+
 void ImageLoader_RegisterFormat( IImageFormat* spFormat )
 {
 	gFormats.push_back( spFormat );
@@ -39,6 +65,14 @@ ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& s
 		if ( auto image = format->LoadImage( srPath, srData ) )
 		{
 			wprintf( L"[ImageLoader] Loaded Image: \"%s\"\n", srPath.c_str() );
+
+			// BGRA is faster than RGBA on GPUs
+			if ( image->aFormat == FMT_RGBA8 )
+			{
+				ConvertRGBA8ToBGRA8( srData );
+				image->aFormat = FMT_BGRA8;
+			}
+
 			return image;
 		}
 	}
@@ -69,6 +103,24 @@ bool ImageLoader_SupportsImageExt( const fs::path& ext )
 	{
 		if ( format->CheckExt( ext.wstring() ) )
 			return true;
+	}
+
+	return false;
+}
+
+
+bool ImageLoader_ConvertFormat( std::vector< char >& srData, PixelFormat srcFmt, PixelFormat dstFmt )
+{
+	// lazy
+	if ( srcFmt == FMT_RGB8 && dstFmt == FMT_BGR8 )
+	{
+		ConvertRGB8ToBGR8( srData );
+		return true;
+	}
+	else if ( srcFmt == FMT_RGBA8 && dstFmt == FMT_BGRA8 )
+	{
+		ConvertRGBA8ToBGRA8( srData );
+		return true;
 	}
 
 	return false;

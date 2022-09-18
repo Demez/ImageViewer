@@ -51,6 +51,7 @@ void       ImageLoader_RegisterFormat( IImageFormat* spFormat );
 ImageInfo* ImageLoader_LoadImage( const fs::path& path, std::vector< char >& srData );
 bool       ImageLoader_SupportsImage( const fs::path& path );
 bool       ImageLoader_SupportsImageExt( const fs::path& ext );
+bool       ImageLoader_ConvertFormat( std::vector< char >& srData, PixelFormat srcFmt, PixelFormat dstFmt );
 
 // ideas
 // 

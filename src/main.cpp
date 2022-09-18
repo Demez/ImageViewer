@@ -244,13 +244,12 @@ void Main_WindowDraw()
 
 	Render_NewFrame();
 
-	ImageView_Draw();
-
 	// ----------------------------------------------------------------------
 	// UI Building
 
 	ImGui::NewFrame();
 
+	ImageView_Draw();
 	ImageList_Draw();
 
 	// Zoom Display
@@ -342,25 +341,17 @@ int entry()
 	{
 		Plat_Update();
 
-		if ( Plat_IsKeyDown( K_RIGHT ) )
-		{
-			ImageList_LoadNextImage();
-			gShouldDraw = true;
-		}
-
-		else if ( Plat_IsKeyDown( K_LEFT ) )
-		{
-			ImageList_LoadPrevImage();
-			gShouldDraw = true;
-		}
-
 		ImageList_Update();
 		gShouldDraw |= ImageView_Update();
 
-		// if ( gShouldDraw )
+		if ( Plat_WindowShown() )
 			Main_WindowDraw();
 
-		Plat_Sleep( 5 );
+		if ( Plat_WindowFocused() )
+			Plat_Sleep( 0.5 );
+
+		else
+			Plat_Sleep( 20 );
 
 		gShouldDraw = false;
 		gCanDraw    = Plat_WindowOpen();

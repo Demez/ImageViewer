@@ -72,10 +72,22 @@ void LoadThumbnailFunc()
 
 void ImageList_Update()
 {
+	if ( Plat_IsKeyDown( K_RIGHT ) )
+	{
+		ImageList_LoadNextImage();
+		Main_ShouldDrawWindow();
+	}
+
+	else if ( Plat_IsKeyDown( K_LEFT ) )
+	{
+		ImageList_LoadPrevImage();
+		Main_ShouldDrawWindow();
+	}
+
 	// TEMP !!!!
 	if ( gNewImageData == nullptr )
 	{
-		ImageList_LoadThumbnail( gNewImagePath );
+		// ImageList_LoadThumbnail( gNewImagePath );
 	}
 
 	// check folder monitor for if a change happened

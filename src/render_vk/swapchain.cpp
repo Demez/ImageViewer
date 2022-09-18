@@ -160,19 +160,19 @@ u32 VK_GetSwapImageCount()
 }
 
 
-std::vector< VkImage > VK_GetSwapImages()
+const std::vector< VkImage >& VK_GetSwapImages()
 {
 	return gImages;
 }
 
 
-std::vector< VkImageView > VK_GetSwapImageViews()
+const std::vector< VkImageView >& VK_GetSwapImageViews()
 {
 	return gImageViews;
 }
 
 
-VkExtent2D VK_GetSwapExtent()
+const VkExtent2D& VK_GetSwapExtent()
 {
 	return gExtent;
 }

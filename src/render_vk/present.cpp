@@ -26,11 +26,18 @@ std::vector< VkFence >         gFences;
 std::vector< VkFence >         gInFlightFences;
 
 u32                            gFrameIndex = 0;
+u32                            gCmdIndex = 0;
 
 
 VkCommandBuffer VK_GetCommandBuffer()
 {
-	return gCommandBuffers[ gFrameIndex ];
+	return gCommandBuffers[ gCmdIndex ];
+}
+
+
+u32 VK_GetCommandIndex()
+{
+	return gCmdIndex;
 }
 
 
@@ -118,6 +125,8 @@ void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
 
 	vkQueueSubmit( VK_GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE );
 	vkQueueWaitIdle( VK_GetGraphicsQueue() );
+
+	VK_ResetCommandPool( VK_GetSingleTimeCommandPool() );
 }
 
 
@@ -125,19 +134,19 @@ void VK_RecordCommands()
 {
 	// For each framebuffer, allocate a primary
     // command buffer, and record the commands.
-	for ( u32 i = 0; i < gCommandBuffers.size(); ++i )
+	for ( gCmdIndex = 0; gCmdIndex < gCommandBuffers.size(); gCmdIndex++ )
 	{
 		VkCommandBufferBeginInfo begin{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 		begin.pNext            = nullptr;
 		begin.flags            = 0;
 		begin.pInheritanceInfo = nullptr;
 
-		VK_CheckResult( vkBeginCommandBuffer( gCommandBuffers[ i ], &begin ), "Failed to begin recording command buffer!" );
+		VK_CheckResult( vkBeginCommandBuffer( gCommandBuffers[ gCmdIndex ], &begin ), "Failed to begin recording command buffer!" );
 
 		VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 		renderPassBeginInfo.pNext             = nullptr;
 		renderPassBeginInfo.renderPass        = VK_GetRenderPass();
-		renderPassBeginInfo.framebuffer       = VK_GetBackBuffer()->aFrameBuffers[ i ];
+		renderPassBeginInfo.framebuffer       = VK_GetBackBuffer()->aFrameBuffers[ gCmdIndex ];
 		renderPassBeginInfo.renderArea.offset = { 0, 0 };
 		renderPassBeginInfo.renderArea.extent = VK_GetSwapExtent();
 
@@ -148,15 +157,19 @@ void VK_RecordCommands()
 		renderPassBeginInfo.clearValueCount = ARR_SIZE( clearValues );
 		renderPassBeginInfo.pClearValues    = clearValues;
 
-		vkCmdBeginRenderPass( gCommandBuffers[ i ], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+		vkCmdBeginRenderPass( gCommandBuffers[ gCmdIndex ], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+		// Render Image
+		VK_BindImageShader();
+		VK_DrawImageShader();
 
 		// Render ImGui
 		ImGui::Render();
-		ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData(), gCommandBuffers[ i ] );
+		ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData(), gCommandBuffers[ gCmdIndex ] );
 
-		vkCmdEndRenderPass( gCommandBuffers[ i ] );
+		vkCmdEndRenderPass( gCommandBuffers[ gCmdIndex ] );
 
-		VK_CheckResult( vkEndCommandBuffer( gCommandBuffers[ i ] ), "Failed to end recording command buffer!" );
+		VK_CheckResult( vkEndCommandBuffer( gCommandBuffers[ gCmdIndex ] ), "Failed to end recording command buffer!" );
 	}
 }
 
@@ -233,6 +246,6 @@ void VK_Present()
 
 	gFrameIndex = ( gFrameIndex + 1 ) % MAX_FRAMES_IN_FLIGHT;
 
-	vkResetCommandPool( VK_GetDevice(), VK_GetPrimaryCommandPool(), 0 );
+	VK_ResetCommandPool( VK_GetPrimaryCommandPool() );
 }
 

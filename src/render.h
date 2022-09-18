@@ -9,12 +9,22 @@ struct ImageInfo;
 struct ImDrawData;
 
 
+enum ImageFilter : unsigned char
+{
+	ImageFilter_Nearest,
+	ImageFilter_Linear,
+	// ImageFilter_Cubic,
+	ImageFilter_Count,
+};
+
+
 struct ImageDrawInfo
 {
 	double aX;
 	double aY;
 	int aWidth;
 	int aHeight;
+	ImageFilter aFilter;
 };
 
 #if 0

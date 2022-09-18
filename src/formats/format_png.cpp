@@ -35,26 +35,56 @@ public:
         if( !pFile )
             return nullptr;
 
-        ImageInfo* imageData = new ImageInfo;
-
         struct spng_ihdr ihdr;
+		int              err = 0;
 
-        spng_set_png_file( ctx, pFile );
-        spng_get_ihdr( ctx, &ihdr );
-
-        spng_format pngFmt = SPNG_FMT_RGBA8;
-
-        if ( ihdr.color_type == SPNG_COLOR_TYPE_TRUECOLOR )
+        err = spng_set_png_file( ctx, pFile );
+		if ( err != 0 )
 		{
-			pngFmt = SPNG_FMT_RGB8;
+			printf( "[FormatPNG] Failed to set image: %s\n", spng_strerror( err ) );
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return nullptr;
 		}
 
+        err = spng_get_ihdr( ctx, &ihdr );
+		if ( err != 0 )
+		{
+			printf( "[FormatPNG] Failed to get ihdr: %s\n", spng_strerror( err ) );
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return nullptr;
+		}
+
+		// look into RGBA16?
+        spng_format pngFmt = SPNG_FMT_RGBA8;
+
+        // if ( ihdr.color_type == SPNG_COLOR_TYPE_TRUECOLOR )
+		// {
+		// 	pngFmt = SPNG_FMT_RGB8;
+		// }
+
         size_t size;
-		spng_decoded_image_size( ctx, pngFmt, (size_t*)&size );
+		err = spng_decoded_image_size( ctx, pngFmt, (size_t*)&size );
+		if ( err != 0 )
+		{
+			printf( "[FormatPNG] Failed to decode image size: %s\n", spng_strerror( err ) );
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return nullptr;
+		}
 
         srData.resize( size );
-        spng_decode_image( ctx, srData.data(), size, pngFmt, 0 );
+		err = spng_decode_image( ctx, srData.data(), size, pngFmt, 0 );
+		if ( err != 0 )
+		{
+			printf( "[FormatPNG] Failed to decode image: %s\n", spng_strerror( err ) );
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return nullptr;
+		}
 
+		ImageInfo* imageData = new ImageInfo;
 		imageData->aWidth    = ihdr.width;
 		imageData->aHeight   = ihdr.height;
 		imageData->aBitDepth = ihdr.bit_depth;
