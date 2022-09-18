@@ -42,7 +42,7 @@ void UpdateZoom()
 
 
 // returns if there was any scroll change
-bool HandleWheelEvent( int scroll )
+bool HandleWheelEvent( char scroll )
 {
 	if ( !gpImageInfo || scroll == 0 )
 		return false;
@@ -56,7 +56,7 @@ bool HandleWheelEvent( int scroll )
 		if ( gZoomLevel >= 100.0 )
 			return false;
 
-		factor += ZOOM_AMOUNT;
+		factor += ( ZOOM_AMOUNT * scroll );
 	}
 	else
 	{
@@ -64,7 +64,7 @@ bool HandleWheelEvent( int scroll )
 		if ( gZoomLevel <= 0.01 )
 			return false;
 
-		factor -= ZOOM_AMOUNT;
+		factor -= ( ZOOM_AMOUNT * abs(scroll) );
 	}
 
 	// TODO: round zoom more the further you get in

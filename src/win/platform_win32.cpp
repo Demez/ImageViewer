@@ -190,9 +190,8 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		case WM_MOUSEWHEEL:
 		{
 			WORD fwKeys  = GET_KEYSTATE_WPARAM( wParam );
-			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam );
+			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam ) / 120;
 			Main_ShouldDrawWindow();
-
 			break;
 		}
 
@@ -290,6 +289,14 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 
 		case WM_PAINT:
 		{
+			// hack
+			static bool firstTime = true;
+			if ( firstTime )
+			{
+				firstTime = false;
+				break;
+			}
+
 			Render_Reset();
 			ImGui_ImplWin32_NewFrame();
 			Main_WindowDraw();
@@ -348,7 +355,6 @@ bool Plat_IsKeyPressed( Key key )
 	return gKeyPressed[ key ];
 }
 
-#define IDD_MAINDLG 101
 
 bool Plat_Init()
 {
@@ -453,7 +459,7 @@ void Plat_Update()
 	// gMouseDelta[ 0 ] = 0;
 	// gMouseDelta[ 1 ] = 0;
 
-	gMouseScroll    = 0;
+	gMouseScroll = 0;
 
 	memset( gKeyDown, false, KEY_COUNT );
 
