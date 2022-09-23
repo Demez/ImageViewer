@@ -13,6 +13,7 @@ set(
 	present.cpp
 	render_pass.cpp
 	texture.cpp
+	shader_compute.cpp
 	shader_image.cpp
 	
 	# imgui files
@@ -25,6 +26,7 @@ set(
 	../log.h
 	../util.cpp
 	../util.h
+	../args.h
 )
 
 add_compile_definitions( "RENDER_DLL" )
@@ -33,7 +35,7 @@ include( ../../vulkan.cmake )
 
 add_library( RenderVK SHARED ${RENDER_VK_FILES} )
 
-add_dependencies( RenderVK "ImGui" )
+add_dependencies( RenderVK "ImGui" "ImageViewer" )
 
 set_target_properties(
 	RenderVK PROPERTIES
@@ -44,6 +46,7 @@ target_link_libraries(
 	RenderVK
 	PRIVATE
 	ImGui
+	ImageViewer
 	${VK_LIB}
 )
 

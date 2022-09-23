@@ -29,8 +29,9 @@ enum ImageZoomType
 // Events
 void            ImageView_EventMouseMotion( int xrel, int yrel );
 
-bool            ImageView_Update();
+void            ImageView_Update();
 void            ImageView_Draw();
+void            ImageView_Shutdown();
 
 void            ImageView_SetImage( const fs::path& path );
 void            ImageView_RemoveImage();

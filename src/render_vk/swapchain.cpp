@@ -65,14 +65,14 @@ VkExtent2D ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& srCapabilities )
 
 void VK_CreateSwapchain()
 {
-	SwapChainSupportInfo swapChainSupport = VK_CheckSwapChainSupport( VK_GetPhysicalDevice() );
+	auto swapChainSupport = VK_CheckSwapChainSupport( VK_GetPhysicalDevice() );
 
-	gSurfaceFormat                        = ChooseSwapSurfaceFormat( swapChainSupport.aFormats );
-	gPresentMode                          = ChooseSwapPresentMode( swapChainSupport.aPresentModes );
-	gExtent                               = ChooseSwapExtent( swapChainSupport.aCapabilities );
+	gSurfaceFormat        = ChooseSwapSurfaceFormat( swapChainSupport.aFormats );
+	gPresentMode          = ChooseSwapPresentMode( swapChainSupport.aPresentModes );
+	gExtent               = ChooseSwapExtent( swapChainSupport.aCapabilities );
 
-	// uint32_t imageCount                   = swapChainSupport.aCapabilities.minImageCount + 1;
-	uint32_t imageCount                   = swapChainSupport.aCapabilities.minImageCount;
+	uint32_t imageCount   = swapChainSupport.aCapabilities.minImageCount;
+
 	if ( swapChainSupport.aCapabilities.maxImageCount > 0 && imageCount > swapChainSupport.aCapabilities.maxImageCount )
 		imageCount = swapChainSupport.aCapabilities.maxImageCount;
 

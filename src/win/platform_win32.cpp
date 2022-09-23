@@ -167,8 +167,6 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		{
 			gMousePos[ 0 ]  = GET_X_LPARAM( lParam );
 			gMousePos[ 1 ]  = GET_Y_LPARAM( lParam );
-			Main_ShouldDrawWindow();
-
 			break;
 		}
 #if 0
@@ -192,7 +190,6 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		{
 			WORD fwKeys  = GET_KEYSTATE_WPARAM( wParam );
 			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam ) / 120;
-			Main_ShouldDrawWindow();
 			break;
 		}
 
@@ -278,7 +275,7 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 	switch ( uMsg )
 	{
 		case WM_MOUSEMOVE:
-		case WM_MOUSEWHEEL:
+		// case WM_MOUSEWHEEL:
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
@@ -594,6 +591,13 @@ void Plat_OpenFileProperties( const fs::path& file )
 		wprintf( L"Failed to open File Properties for file: %s\n", file.c_str() );
 	}
 }
+
+
+int Plat_Stat( const std::filesystem::path& file, struct stat* info )
+{
+	return _wstat( file.c_str(), info );
+}
+
 
 std::USTRING Plat_ToUnicode( const char* spStr )
 {

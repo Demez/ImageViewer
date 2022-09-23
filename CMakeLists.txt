@@ -70,6 +70,12 @@ link_directories(
 
 add_executable( ImageViewer ${SRC_FILES} ${PLAT_FILES} )
 
+set_target_properties(
+	ImageViewer PROPERTIES
+	# OUTPUT_NAME proto_img_view
+	ENABLE_EXPORTS true
+)
+
 target_link_libraries(
 	ImageViewer
 	spng

@@ -69,8 +69,8 @@ ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& s
 			// BGRA is faster than RGBA on GPUs
 			if ( image->aFormat == FMT_RGBA8 )
 			{
-				ConvertRGBA8ToBGRA8( srData );
-				image->aFormat = FMT_BGRA8;
+				// ConvertRGBA8ToBGRA8( srData );
+				// image->aFormat = FMT_BGRA8;
 			}
 
 			return image;

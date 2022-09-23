@@ -23,7 +23,7 @@ std::unordered_map< ImageInfo*, SDL_Texture* > gImageTextures;
 
 bool Render_Init( void* spWindow )
 {
-	SDL_LogSetAllPriority( SDL_LOG_PRIORITY_VERBOSE );
+	// SDL_LogSetAllPriority( SDL_LOG_PRIORITY_VERBOSE );
 
 	SDL_Init( SDL_INIT_VIDEO );
 
@@ -51,6 +51,8 @@ bool Render_Init( void* spWindow )
 		return false;
 	}
 
+	printf( "Render: Loaded SDL2 Renderer\n" );
+
 	return true;
 }
 
@@ -65,7 +67,7 @@ void Render_NewFrame()
 {
 	ImGui_ImplSDLRenderer_NewFrame();
 	
-	SDL_SetRenderDrawColor( gRenderer, 48, 48, 48, 255 );
+	SDL_SetRenderDrawColor( gRenderer, gClearR, gClearG, gClearB, 255 );
 	SDL_RenderClear( gRenderer );
 }
 
@@ -126,6 +128,12 @@ bool Render_LoadImage( ImageInfo* spInfo, std::vector< char >& srData )
 	{
 		sdlFmt = SDL_PIXELFORMAT_BGR24;
 		pitch *= 3;
+	}
+	else if ( spInfo->aFormat == FMT_BGRA8 )
+	{
+		// sdlFmt = SDL_PIXELFORMAT_BGRA8888;
+		sdlFmt = SDL_PIXELFORMAT_ARGB8888;
+		pitch *= 4;
 	}
 	else
 	{

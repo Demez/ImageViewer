@@ -25,8 +25,8 @@ std::vector< VkSemaphore >     gRenderFinishedSemaphores;
 std::vector< VkFence >         gFences;
 std::vector< VkFence >         gInFlightFences;
 
-u32                            gFrameIndex = 0;
-u32                            gCmdIndex = 0;
+u8                             gFrameIndex = 0;
+u8                             gCmdIndex = 0;
 
 
 VkCommandBuffer VK_GetCommandBuffer()
@@ -55,6 +55,19 @@ void VK_CreateFences()
 	}
 }
 
+
+void VK_DestroyFences()
+{
+	for ( auto& fence : gFences )
+	{
+		vkDestroyFence( VK_GetDevice(), fence, nullptr );
+	}
+
+	gFences.clear();
+	gInFlightFences.clear();
+}
+
+
 void VK_CreateSemaphores()
 {
 	gImageAvailableSemaphores.resize( MAX_FRAMES_IN_FLIGHT );
@@ -67,6 +80,23 @@ void VK_CreateSemaphores()
 		VK_CheckResult( vkCreateSemaphore( VK_GetDevice(), &info, nullptr, &gImageAvailableSemaphores[ i ] ), "Failed to create semaphore!" );
 		VK_CheckResult( vkCreateSemaphore( VK_GetDevice(), &info, nullptr, &gRenderFinishedSemaphores[ i ] ), "Failed to create semaphore!" );
 	}
+}
+
+
+void VK_DestroySemaphores()
+{
+	for ( auto& semaphore : gImageAvailableSemaphores )
+	{
+		vkDestroySemaphore( VK_GetDevice(), semaphore, nullptr );
+	}
+
+	for ( auto& semaphore : gRenderFinishedSemaphores )
+	{
+		vkDestroySemaphore( VK_GetDevice(), semaphore, nullptr );
+	}
+
+	gImageAvailableSemaphores.clear();
+	gRenderFinishedSemaphores.clear();
 }
 
 
@@ -107,6 +137,11 @@ void VK_FreeCommands()
 }
 
 
+// TODO: maybe split into these functions?
+// VK_BeginCommand( cmdBuffer, oneTime = true )
+// (your code here for command buffer)
+// VK_EndCommand( cmdBuffer )
+// VK_QueueCommand( queue ) - can be ran later maybe?
 void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
 {
 	VkCommandBufferBeginInfo aCommandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -143,6 +178,9 @@ void VK_RecordCommands()
 
 		VK_CheckResult( vkBeginCommandBuffer( gCommandBuffers[ gCmdIndex ], &begin ), "Failed to begin recording command buffer!" );
 
+		// Run Filter if needed
+		VK_RunFilterShader();
+
 		VkRenderPassBeginInfo renderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 		renderPassBeginInfo.pNext             = nullptr;
 		renderPassBeginInfo.renderPass        = VK_GetRenderPass();
@@ -171,6 +209,8 @@ void VK_RecordCommands()
 
 		VK_CheckResult( vkEndCommandBuffer( gCommandBuffers[ gCmdIndex ] ), "Failed to end recording command buffer!" );
 	}
+
+	VK_PostImageFilter();
 }
 
 

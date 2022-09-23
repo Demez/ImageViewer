@@ -7,18 +7,19 @@
 #include "render.h"
 #include "imgui.h"
 
-#include <map>
+#include <unordered_map>
 #include <thread>
 
 
-static fs::path                gCurrentDir;
-static std::vector< fs::path > gImages;
-static size_t                  gIndex;
+static fs::path                                    gCurrentDir;
+static std::vector< fs::path >                     gImages;
+static size_t                                      gIndex;
 
-static FileSort                          gSortMode = FileSort_DateModNewest;
-std::map< fs::path, fs::file_time_type > gDateMap;
+static FileSort                                    gSortMode = FileSort_DateModNewest;
+std::unordered_map< fs::path, fs::file_time_type > gDateMap;
+std::unordered_map< fs::path, struct stat >        gFileStatMap;
 
-extern fs::path                gImagePath;
+extern fs::path                                    gImagePath;
 
 
 struct ImageListElement
@@ -96,33 +97,6 @@ void ImageList_Update()
 
 	// something changed, reload files
 	ImageList_LoadFiles();
-
-	// OPTIONAL:
-	// checks if the image currently loaded was deleted,
-	// and automatically goes to the next image if so
-
-	size_t newIndex = vec_index( gImages, gImagePath );
-
-	// file we had loaded was deleted
-	if ( newIndex == SIZE_MAX )
-	{
-		// are we now outside the total image count?
-		if ( gIndex > gImages.size() )
-		{
-			gIndex = gImages.size()-1;
-			ImageView_SetImage( gImages[ gIndex ] );
-		}
-		else
-		{
-			// nope, load whatever image fell into that slot now
-			ImageView_SetImage( gImages[ gIndex ] );
-		}
-	}
-	else
-	{
-		// update our image index
-		gIndex = newIndex;
-	}
 }
 
 
@@ -205,6 +179,9 @@ void ImageList_SetSortMode( FileSort sortMode )
 	}
 
 	gSortMode = sortMode;
+
+	if ( ImageList_InFolder() )
+		ImageList_SortFiles();
 }
 
 
@@ -326,8 +303,50 @@ int qsort_date_mod_oldest( const void* spLeft, const void* spRight )
 }
 
 
+int qsort_date_created_newest( const void* spLeft , const void* spRight )
+{
+	const auto* pathX = (fs::path*)spLeft;
+	const auto* pathY = (fs::path*)spRight;
+
+	const auto& x     = gFileStatMap.at( *pathX );
+	const auto& y     = gFileStatMap.at( *pathY );
+
+	if ( x.st_ctime > y.st_ctime )
+		return -1;
+	else if ( x.st_ctime < y.st_ctime )
+		return 1;
+
+	return 0;
+}
+
+
+int qsort_date_created_oldest( const void* spLeft, const void* spRight )
+{
+	const auto* pathX = (fs::path*)spLeft;
+	const auto* pathY = (fs::path*)spRight;
+
+	const auto& x     = gFileStatMap.at( *pathX );
+	const auto& y     = gFileStatMap.at( *pathY );
+
+	if ( x.st_ctime > y.st_ctime )
+		return 1;
+	else if ( x.st_ctime < y.st_ctime )
+		return -1;
+
+	return 0;
+}
+
+
 void ImageList_SortFiles()
 {
+	Main_ShouldDrawWindow();
+
+	if ( gDateMap.size() != gImages.size() )
+		gDateMap.clear();
+
+	if ( gFileStatMap.size() != gImages.size() )
+		gFileStatMap.clear();
+
 	switch ( gSortMode )
 	{
 		default:
@@ -337,12 +356,15 @@ void ImageList_SortFiles()
 		}
 
 		case FileSort_None:
-			return;
+			break;
 
 		case FileSort_DateModNewest:
 		{
-			for ( auto& file : gImages )
-				gDateMap[ file ] = fs::last_write_time( file );
+			if ( gDateMap.empty() )
+			{
+				for ( auto& file : gImages )
+					gDateMap[ file ] = fs::last_write_time( file );
+			}
 
 			std::qsort( gImages.data(), gImages.size(), sizeof( fs::path ), qsort_date_mod_newest );
 			break;
@@ -350,12 +372,74 @@ void ImageList_SortFiles()
 
 		case FileSort_DateModOldest:
 		{
-			for ( auto& file : gImages )
-				gDateMap[ file ] = fs::last_write_time( file );
+			if ( gDateMap.empty() )
+			{
+				for ( auto& file : gImages )
+					gDateMap[ file ] = fs::last_write_time( file );
+			}
 
 			std::qsort( gImages.data(), gImages.size(), sizeof( fs::path ), qsort_date_mod_oldest );
 			break;
 		}
+
+		case FileSort_DateCreatedNewest:
+		{
+			if ( gFileStatMap.empty() )
+			{
+				for ( auto& file : gImages )
+				{
+					struct stat fileStat;
+					int ret = Plat_Stat( file, &fileStat );
+					gFileStatMap[ file ] = fileStat;
+				}
+			}
+
+			std::qsort( gImages.data(), gImages.size(), sizeof( fs::path ), qsort_date_created_newest );
+			break;
+		}
+
+		case FileSort_DateCreatedOldest:
+		{
+			if ( gFileStatMap.empty() )
+			{
+				for ( auto& file : gImages )
+				{
+					struct stat fileStat;
+					int         ret      = Plat_Stat( file, &fileStat );
+					gFileStatMap[ file ] = fileStat;
+				}
+			}
+
+			std::qsort( gImages.data(), gImages.size(), sizeof( fs::path ), qsort_date_created_oldest );
+			break;
+		}
+	}
+
+	// OPTIONAL:
+	// checks if the image currently loaded was deleted,
+	// and automatically goes to the next image if so
+
+	size_t newIndex = vec_index( gImages, gImagePath );
+
+	// file we had loaded was deleted
+	if ( newIndex == SIZE_MAX )
+	{
+		// are we now outside the total image count?
+		if ( gIndex > gImages.size() )
+		{
+			gIndex = gImages.size() - 1;
+			ImageView_SetImage( gImages[ gIndex ] );
+		}
+		else
+		{
+			// nope, load whatever image fell into that slot now
+			ImageView_SetImage( gImages[ gIndex ] );
+		}
+	}
+	else
+	{
+		// update our image index
+		gIndex = newIndex;
 	}
 }
 

@@ -217,6 +217,32 @@ void Main_VoidContextMenu()
 
 	if ( ImGui::BeginMenu( "Sort Mode" ) )
 	{
+		auto sortMode = ImageList_GetSortMode();
+
+		if ( ImGui::MenuItem( "File Name - A to Z", nullptr, sortMode == FileSort_AZ, false ) )
+			ImageList_SetSortMode( FileSort_AZ );
+
+		if ( ImGui::MenuItem( "File Name - Z to A", nullptr, sortMode == FileSort_ZA, false ) )
+			ImageList_SetSortMode( FileSort_ZA );
+
+		if ( ImGui::MenuItem( "Date Modified - Newest First", nullptr, sortMode == FileSort_DateModNewest, ImageList_InFolder() ) )
+			ImageList_SetSortMode( FileSort_DateModNewest );
+
+		if( ImGui::MenuItem( "Date Modified - Oldest First", nullptr, sortMode == FileSort_DateModOldest, ImageList_InFolder() ) )
+			ImageList_SetSortMode( FileSort_DateModOldest );
+
+		if ( ImGui::MenuItem( "Date Created - Newest First", nullptr, sortMode == FileSort_DateCreatedNewest, ImageList_InFolder() ) )
+			ImageList_SetSortMode( FileSort_DateCreatedNewest );
+
+		if ( ImGui::MenuItem( "Date Created - Oldest First", nullptr, sortMode == FileSort_DateCreatedOldest, ImageList_InFolder() ) )
+			ImageList_SetSortMode( FileSort_DateCreatedOldest );
+
+		if ( ImGui::MenuItem( "File Size - Largest First", nullptr, sortMode == FileSort_SizeLargest, false ) )
+			ImageList_SetSortMode( FileSort_SizeLargest );
+
+		if ( ImGui::MenuItem( "File Size - Smallest First", nullptr, sortMode == FileSort_SizeSmallest, false ) )
+			ImageList_SetSortMode( FileSort_SizeSmallest );
+
 		ImGui::EndMenu();
 	}
 
@@ -227,7 +253,7 @@ void Main_VoidContextMenu()
 
 	ImGui::Separator();
 
-	if ( ImGui::MenuItem( "Settings", nullptr, false ) )
+	if ( ImGui::MenuItem( "Settings", nullptr, false, false ) )
 	{
 	}
 
@@ -298,8 +324,6 @@ int entry()
 
 	ImGui::CreateContext();
 
-	auto imguiCtx = ImGui::GetCurrentContext();
-
 	if ( !Plat_Init() )
 	{
 		printf( "Failed to init platform!!\n" );
@@ -309,7 +333,7 @@ int entry()
 
 	Plat_SetMinWindowSize( 320, 240 );
 
-	StyleImGui();
+	// StyleImGui();
 
 	if ( !Render_Init( Plat_GetWindow() ) )
 	{
@@ -324,7 +348,7 @@ int entry()
 		// still kinda shit, hmm
 		for ( int i = 1; i < Args_Count(); i++ )
 		{
-			if ( fs_is_file( Args_Get( i ).c_str() ) )
+			if ( fs_is_file( Args_Get( i ).data() ) )
 			{
 				ImageView_SetImage( Args_Get( i ) );
 				break;
@@ -337,14 +361,16 @@ int entry()
 	gCanDraw = Plat_WindowOpen();
 	gRunning = gCanDraw;
 
+	auto& io = ImGui::GetIO();
+
 	while ( gCanDraw )
 	{
 		Plat_Update();
 
 		ImageList_Update();
-		gShouldDraw |= ImageView_Update();
+		ImageView_Update();
 
-		if ( Plat_WindowShown() )
+		if ( Plat_WindowShown() && gShouldDraw )
 			Main_WindowDraw();
 
 		if ( Plat_WindowFocused() )
@@ -358,6 +384,8 @@ int entry()
 	}
 
 	Render_Shutdown();
+
+	ImageView_Shutdown();
 
 	ImGui::DestroyContext();
 

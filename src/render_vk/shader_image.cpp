@@ -16,13 +16,35 @@ static u32 gImageShaderVert[] = {
 };
 
 
+// meh
+struct ImgVert_t
+{
+	vec2 aPos;
+	vec2 aUV;
+};
+
+
+struct ImgPush_t
+{
+	vec2        aScale;
+	vec2        aImageScale;
+	vec2        aBicubicScale;
+	vec2        aWindowScale;
+	vec2        aTranslate;
+	vec2        aTextureSize;
+	vec2        aDrawSize;
+	int         aTexIndex;
+	ImageFilter aFilterType;
+};
+
+
 // Shader
 static VkShaderModule        gShaderModules[ 2 ]{};
 
 static VkPipeline            gPipeline       = nullptr;
 static VkPipelineLayout      gPipelineLayout = nullptr;
 
-static VkDescriptorSetLayout gLayouts[ 1 ]{};
+static VkDescriptorSetLayout gLayouts[ 2 ]{};
 
 
 // Mesh
@@ -60,10 +82,15 @@ void VK_AddImageDrawInfo( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 	if ( tex->aFilter != srDrawInfo.aFilter )
 	{
 		tex->aFilter = srDrawInfo.aFilter;
-		VK_UpdateImageSets();
+		
+		if ( tex->aFilter == ImageFilter_Nearest || tex->aFilter == ImageFilter_Linear )
+		{
+			// VK_UpdateImageSets();
+			// VK_AddFilterTask( spInfo, srDrawInfo );
+		}
 	}
 
-	gDrawQueue.push_back( { spInfo, srDrawInfo, VK_GetTexture( spInfo ) } );
+	gDrawQueue.push_back( { spInfo, srDrawInfo, tex } );
 }
 
 
@@ -78,6 +105,13 @@ VkShaderModule VK_CreateShaderModule( u32* spByteCode, u32 sSize )
 	VK_CheckResult( vkCreateShaderModule( VK_GetDevice(), &createInfo, NULL, &shaderModule ), "Failed to create shader module!" );
 
 	return shaderModule;
+}
+
+
+void VK_DestroyShaderModule( VkShaderModule shaderModule )
+{
+	if ( shaderModule )
+		vkDestroyShaderModule( VK_GetDevice(), shaderModule, nullptr );
 }
 
 
@@ -116,6 +150,7 @@ void VK_BindImageShader()
 
 	VkDescriptorSet sets[] = {
 		VK_GetImageSets()[ VK_GetCommandIndex() ],
+		VK_GetImageStorage()[ VK_GetCommandIndex() ],
 	};
 
 	vkCmdBindDescriptorSets( VK_GetCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, gPipelineLayout, 0, 1, sets, 0, nullptr );
@@ -124,27 +159,47 @@ void VK_BindImageShader()
 
 void VK_DrawImageShader()
 {
-	for ( auto shaderDraw : gDrawQueue )
+	for ( const auto& shaderDraw : gDrawQueue )
 	{
 		auto&     drawInfo = shaderDraw.aDrawInfo;
 
 		// update push constant
 		ImgPush_t push{};
-		push.aScale.x     = 2.0f / VK_GetSwapExtent().width;
-		push.aScale.y     = 2.0f / VK_GetSwapExtent().height;
+		push.aWindowScale.x = VK_GetSwapExtent().width;
+		push.aWindowScale.y = VK_GetSwapExtent().height;
+
+		push.aImageScale = push.aScale;
+
+		// idfk
+		push.aBicubicScale.x  = 4;
+		push.aBicubicScale.y  = 4;
+
+		push.aScale.x = 2.0f / VK_GetSwapExtent().width;
+		push.aScale.y = 2.0f / VK_GetSwapExtent().height;
 		push.aTranslate.x = ( drawInfo.aX - ( VK_GetSwapExtent().width / 2.f ) ) * push.aScale.x;
 		push.aTranslate.y = ( drawInfo.aY - ( VK_GetSwapExtent().height / 2.f ) ) * push.aScale.y;
 
 		push.aScale.x *= drawInfo.aWidth;
 		push.aScale.y *= drawInfo.aHeight;
+		
+		// useless? just use the textureSize() function?
+		push.aDrawSize.x    = shaderDraw.aDrawInfo.aWidth;
+		push.aDrawSize.y    = shaderDraw.aDrawInfo.aHeight;
+		push.aTextureSize.x = shaderDraw.apInfo->aWidth;
+		push.aTextureSize.y = shaderDraw.apInfo->aHeight;
+
+		push.aFilterType = shaderDraw.aDrawInfo.aFilter;
 
 		// printf( "SCALE:  %.6f x %.6f   TRANSLATE: %.6f x %.6f   OFFSET: %.6f x %.6f\n",
-		// 	aPushConstant.aScale.x, aPushConstant.aScale.y,
-		// 	aPushConstant.aTranslate.x, aPushConstant.aTranslate.y,
+		// 	push.aScale.x, push.aScale.y,
+		// 	push.aTranslate.x, push.aTranslate.y,
 		// 	drawInfo.aX, drawInfo.aY
 		// );
 
 		push.aTexIndex = shaderDraw.apTexture->aIndex;
+
+		// maybe check if the compute shader has an output for this? idk
+
 		vkCmdPushConstants( VK_GetCommandBuffer(), gPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof( ImgPush_t ), &push );
 
 		vkCmdDraw( VK_GetCommandBuffer(), gVertices.size(), 1, 0, 0 );
@@ -210,6 +265,7 @@ void VK_CreateImageMesh()
 void VK_CreateImagePipeline()
 {
 	gLayouts[ 0 ] = VK_GetImageLayout();
+	gLayouts[ 1 ] = VK_GetImageStorageLayout();
 
 	VkPipelineLayoutCreateInfo pipelineCreateInfo{
 		.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -394,5 +450,33 @@ void VK_CreateImageShader()
 
 	VK_CreateImagePipeline();
 	VK_CreateImageMesh();
+}
+
+
+void VK_DestroyImageShader()
+{
+	if ( gShaderModules[ 0 ] )
+		vkDestroyShaderModule( VK_GetDevice(), gShaderModules[ 0 ], nullptr );
+
+	if ( gShaderModules[ 1 ] )
+		vkDestroyShaderModule( VK_GetDevice(), gShaderModules[ 1 ], nullptr );
+
+	gShaderModules[ 0 ] = nullptr;
+	gShaderModules[ 1 ] = nullptr;
+
+	if ( gVertexBuffer )
+		VK_DestroyBuffer( gVertexBuffer, gVertexBufferMem );
+
+	gVertexBuffer = nullptr;
+	gVertexBufferMem = nullptr;
+
+	if ( gPipelineLayout )
+		vkDestroyPipelineLayout( VK_GetDevice(), gPipelineLayout, nullptr );
+
+	if ( gPipeline )
+		vkDestroyPipeline( VK_GetDevice(), gPipeline, nullptr );
+
+	gPipeline = nullptr;
+	gPipelineLayout = nullptr;
 }
 

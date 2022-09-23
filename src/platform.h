@@ -29,7 +29,9 @@ typedef void* Module;
   #define USTRING      wstring
   #define USTRING_VIEW wstring_view
 
-  #define _T( str ) L##str
+  #define _T( str )    L##str
+
+  #define stat         _stat
 
 #else
 
@@ -116,6 +118,8 @@ bool         Plat_CanUndo();
 bool         Plat_CanRedo();
 bool         Plat_Undo();
 bool         Plat_Redo();
+
+int          Plat_Stat( const std::filesystem::path& file, struct stat* info );
 
 std::USTRING Plat_ToUnicode( const char* spStr );
 int          Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize );

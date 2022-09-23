@@ -1,6 +1,7 @@
 #include "platform.h"
 #include "util.h"
 #include "log.h"
+#include "args.h"
 
 #include "render_vk.h"
 
@@ -27,6 +28,22 @@ constexpr char const* gpExtensions[] = {
 };
 
 
+constexpr char const* gpDeviceExtensions[] = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	"VK_EXT_descriptor_indexing"
+};
+
+
+constexpr char const* gpOptionalExtensions[] = {
+	VK_EXT_FILTER_CUBIC_EXTENSION_NAME,
+};
+
+
+constexpr char const* gpOptionalDeviceExtensions[] = {
+	VK_EXT_FILTER_CUBIC_EXTENSION_NAME,
+};
+
+
 #if _DEBUG
 PFN_vkDebugMarkerSetObjectTagEXT  pfnDebugMarkerSetObjectTag;
 PFN_vkDebugMarkerSetObjectNameEXT pfnDebugMarkerSetObjectName;
@@ -34,9 +51,6 @@ PFN_vkCmdDebugMarkerBeginEXT      pfnCmdDebugMarkerBegin;
 PFN_vkCmdDebugMarkerEndEXT        pfnCmdDebugMarkerEnd;
 PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
-
-
-constexpr char const*           gpDeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_EXT_descriptor_indexing" };
 
 
 static VkInstance               gInstance;
@@ -64,14 +78,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VK_DebugCallback( VkDebugUtilsMessageSeverityFlag
 
 	return VK_FALSE;
 }
-
-
-constexpr VkDebugUtilsMessengerCreateInfoEXT gLayerInfo = {
-	.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-	.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-	.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-	.pfnUserCallback = VK_DebugCallback,
-};
 
 
 bool VK_CheckValidationLayerSupport()
@@ -105,6 +111,12 @@ bool VK_CheckValidationLayerSupport()
 	return true;
 }
 
+constexpr VkDebugUtilsMessengerCreateInfoEXT gLayerInfo = {
+	.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+	.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+	.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+	.pfnUserCallback = VK_DebugCallback,
+};
 
 VkResult VK_CreateValidationLayers()
 {
@@ -113,6 +125,14 @@ VkResult VK_CreateValidationLayers()
 		return func( gInstance, &gLayerInfo, nullptr, &gLayers );
 	else
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
+}
+
+
+void VK_DestroyValidationLayers()
+{
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr( gInstance, "vkDestroyDebugUtilsMessengerEXT" );
+	if ( func != NULL )
+		func( gInstance, gLayers, nullptr );
 }
 
 
@@ -126,9 +146,33 @@ bool VK_CheckDeviceExtensionSupport( VkPhysicalDevice sDevice )
 
 	std::set< std::string > requiredExtensions( gpDeviceExtensions, gpDeviceExtensions + ARR_SIZE( gpDeviceExtensions ) );
 
-	for ( const auto& extension : availableExtensions )
+	if ( ARGS_HAS( "-list-exts" ) )
 	{
-		requiredExtensions.erase( extension.extensionName );
+		printf( "Device Extensions: %zd\n", availableExtensions.size() );
+
+		for ( const auto& extension : availableExtensions )
+		{
+			auto ret = requiredExtensions.find( extension.extensionName );
+
+			if ( ret != requiredExtensions.end() )
+			{
+				printf( " [LOADED] %s \n", extension.extensionName );
+				requiredExtensions.erase( extension.extensionName );
+			}
+			else
+			{
+				printf( "          %s\n", extension.extensionName );
+			}
+		}
+
+		printf( "\n" );
+	}
+	else
+	{
+		for ( const auto& extension : availableExtensions )
+		{
+			requiredExtensions.erase( extension.extensionName );
+		}
 	}
 
 	return requiredExtensions.empty();
@@ -173,12 +217,15 @@ bool VK_CreateInstance()
 	std::vector< VkExtensionProperties > extProps( extensionCount );
 	vkEnumerateInstanceExtensionProperties( NULL, &extensionCount, extProps.data() );
 
-	// printf( "%d Vulkan extensions available:\n", extensionCount );
-	// 
-	// for ( const auto& ext : extProps )
-	// 	printf( "\t%s\n", ext.extensionName );
-	// 
-	// printf( "\n" );
+	if ( ARGS_HAS( "-list-exts" ) )
+	{
+		printf( "%d Vulkan extensions available:\n", extensionCount );
+	
+		for ( const auto& ext : extProps )
+			printf( "    %s\n", ext.extensionName );
+	
+		printf( "\n" );
+	}
 
 	if ( gEnableValidationLayers && VK_CreateValidationLayers() != VK_SUCCESS )
 		LogFatal( "Failed to create validation layers!" );
@@ -189,6 +236,7 @@ bool VK_CreateInstance()
 
 void VK_DestroyInstance()
 {
+	VK_DestroyValidationLayers();
 	vkDestroyDevice( gDevice, NULL );
 	vkDestroySurfaceKHR( gInstance, gSurface, NULL );
 	vkDestroyInstance( gInstance, NULL );
@@ -224,7 +272,7 @@ QueueFamilyIndices VK_FindQueueFamilies( VkPhysicalDevice sDevice )
 	int i = 0;
 	for ( const auto& queueFamily : queueFamilies )
 	{
-		if ( queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT )
+		if ( queueFamily.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT) )
 		{
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR( sDevice, i, VK_GetSurface(), &presentSupport );
@@ -297,7 +345,7 @@ void VK_CreateSurface( void* spWindow )
 	surfCreateInfo.flags     = 0;
 	surfCreateInfo.pNext     = NULL;
 
-	VK_CheckResult( vkCreateWin32SurfaceKHR( VK_GetInstance(), &surfCreateInfo, nullptr, &gSurface ), "Failed to create Surface\n" );
+	VK_CheckResult( vkCreateWin32SurfaceKHR( VK_GetInstance(), &surfCreateInfo, nullptr, &gSurface ), "Failed to create Surface" );
 #else
   #error "create vulkan surface"
 #endif

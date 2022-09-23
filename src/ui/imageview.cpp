@@ -15,12 +15,16 @@
 //#include "async/async.h"
 
 
-fs::path      gImagePath;
-ImageInfo*    gpImageInfo = nullptr;
-ImageDrawInfo gDrawInfo;
-size_t        gImageHandle = 0;
-double        gZoomLevel   = 1.0f;
-bool          gGrabbed     = false;
+fs::path         gImagePath;
+ImageInfo*       gpImageInfo = nullptr;
+ImageDrawInfo    gDrawInfo;
+
+ImageFilter      gZoomOutFilter = ImageFilter_Cubic;
+ImageFilter      gZoomInFilter  = ImageFilter_Nearest;
+
+size_t           gImageHandle   = 0;
+double           gZoomLevel     = 1.0f;
+bool             gGrabbed       = false;
 
 
 // -------------------------------------------------------------------
@@ -42,10 +46,10 @@ void UpdateZoom()
 
 
 // returns if there was any scroll change
-bool HandleWheelEvent( char scroll )
+void HandleWheelEvent( char scroll )
 {
 	if ( !gpImageInfo || scroll == 0 )
-		return false;
+		return;
 
 	double factor = 1.0;
 
@@ -54,7 +58,7 @@ bool HandleWheelEvent( char scroll )
 	{
 		// max zoom level
 		if ( gZoomLevel >= 100.0 )
-			return false;
+			return;
 
 		factor += ( ZOOM_AMOUNT * scroll );
 	}
@@ -62,7 +66,7 @@ bool HandleWheelEvent( char scroll )
 	{
 		// min zoom level
 		if ( gZoomLevel <= 0.01 )
-			return false;
+			return;
 
 		factor -= ( ZOOM_AMOUNT * abs(scroll) );
 	}
@@ -101,7 +105,7 @@ bool HandleWheelEvent( char scroll )
 	gDrawInfo.aX = mouseX - gZoomLevel / oldZoom * ( mouseX - gDrawInfo.aX );
 	gDrawInfo.aY = mouseY - gZoomLevel / oldZoom * ( mouseY - gDrawInfo.aY );
 
-	return true;
+	Main_ShouldDrawWindow();
 }
 
 
@@ -142,6 +146,36 @@ void LoadImageFunc()
 std::thread gLoadImageThread( LoadImageFunc );
 
 
+void ImageView_Shutdown()
+{
+	gRunning = false;
+	gLoadImageThread.join();
+}
+
+
+// blech
+ImageFilter ImageView_GetImageFilter()
+{
+	if ( gZoomLevel >= 1.0 )
+		return gZoomInFilter;
+
+	return gZoomOutFilter;
+}
+
+
+void ImageView_SetImageFilter( ImageFilter filter )
+{
+	if ( gZoomLevel >= 1.0 )
+	{
+		gZoomInFilter = filter;
+	}
+	else
+	{
+		gZoomOutFilter = filter;
+	}
+}
+
+
 void ImageView_LoadImage()
 {
 	if ( gpImageInfo )
@@ -159,7 +193,7 @@ void ImageView_LoadImage()
 	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
 	gDrawInfo.aWidth  = gpImageInfo->aWidth;
 	gDrawInfo.aHeight = gpImageInfo->aHeight;
-	gDrawInfo.aFilter = ImageFilter_Nearest;
+	gDrawInfo.aFilter = gZoomOutFilter;
 
 	gImagePath        = gNewImagePath;
 
@@ -173,13 +207,13 @@ void ImageView_LoadImage()
 	gNewImagePath.clear();
 	gNewImageData = nullptr;
 	gReadData.clear();
+
+	Main_ShouldDrawWindow();
 }
 
 
-bool ImageView_Update()
+void ImageView_Update()
 {
-	bool shouldDraw = false;
-
 	if ( gNewImageData )
 	{
 		// an image being loaded in the background is now ready to be finished loading on the main thread
@@ -189,17 +223,17 @@ bool ImageView_Update()
 	if ( Plat_IsKeyDown( K_DELETE ) )
 	{
 		ImageView_DeleteImage();
-		return false;
+		return;
 	}
 
 	if ( !gpImageInfo )
-		return false;
+		return;
 	
 	auto& io = ImGui::GetIO();
 
 	// if ( io.WantCaptureMouse && !gGrabbed )
 	if ( io.WantCaptureMouseUnlessPopupClose && !gGrabbed )
-		return false;
+		return;
 
 	gGrabbed = Plat_IsKeyPressed( K_LBUTTON );
 
@@ -210,35 +244,122 @@ bool ImageView_Update()
 		Plat_GetMouseDelta( xrel, yrel );
 		gDrawInfo.aX += xrel;
 		gDrawInfo.aY += yrel;
-		shouldDraw = true;
+
+		if ( xrel != 0 || yrel != 0 )
+			Main_ShouldDrawWindow();
 	}
 
 	// if window resized and zoom mode set to ImageZoom_FitInView, refit the image
 	// probably use a callback for this? idk
 
 	if ( io.WantCaptureMouseUnlessPopupClose )
-		return false;
+		return;
 
-	shouldDraw |= HandleWheelEvent( Plat_GetMouseScroll() );
+	HandleWheelEvent( Plat_GetMouseScroll() );
+}
 
-	return shouldDraw;
+
+constexpr void operator+=( ImageFilter& filter, unsigned char other )
+{
+	u8& number = (u8&)filter;
+	number += other;
 }
 
 
 void ImageView_Draw()
 {
+	static bool wasLoading = false;
+
+	if ( !gNewImagePath.empty() )
+	{
+		if ( !wasLoading )
+			Main_ShouldDrawWindow();
+
+		wasLoading = true;
+		// thanks imgui for not having this use ImWchar
+#if _WIN32
+		std::string path = Plat_FromUnicode( gNewImagePath.c_str() );
+#else
+		std::string path = gNewImagePath.string();
+#endif
+
+		path = "Loading Image: " + path;
+
+		int width, height;
+		Plat_GetWindowSize( width, height );
+
+		float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+
+		// ImGui::SetNextWindowPos( { 16.f, (float)height - lineHeight - 24.f } );
+		// ImGui::SetNextWindowSizeConstraints( { 32.f, 64.f }, { 32.f, (float)width } );
+		// ImGui::SetNextWindowSize( { 32, 96 } );
+
+		float calcWidth = ImGui::CalcItemWidth();
+		ImVec2 textSize = ImGui::CalcTextSize( path.c_str() );
+
+		ImGui::SetNextWindowPos( { 16.f, (float)height - (textSize.y * 2) - 16.f } );
+		ImGui::SetNextWindowSize( { textSize.x + textSize.y, textSize.y * 2 } );
+
+		float test = ImGui::GetCursorPosY();
+
+		ImGui::SetNextWindowBgAlpha( 32 );
+
+		ImGui::Begin( "loading text", 0,
+			ImGuiWindowFlags_NoNav | 
+			ImGuiWindowFlags_NoDecoration | 
+			ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_NoSavedSettings );
+
+		ImGui::TextUnformatted( path.c_str() );
+
+		// ImGui::SetWindowPos( { 16.f, (float)height - ImGui::GetWindowHeight() - 16.f } );
+
+		ImGui::End();
+	}
+	else
+	{
+		wasLoading = false;
+		Main_ShouldDrawWindow();
+	}
+
 	if ( !gpImageInfo )
 		return;
 
-	ImGui::Text( "Current Filter: %s", gDrawInfo.aFilter == ImageFilter_Nearest ? "Nearest" : "Linear" );
 
-	if ( ImGui::Button( "TOGGLE FILTER" ) )
+	if ( ImGui::Button( "Switch Filter" ) )
 	{
-		if ( gDrawInfo.aFilter == ImageFilter_Nearest )
-			gDrawInfo.aFilter = ImageFilter_Linear;
-		else
+		gDrawInfo.aFilter += 1;
+		if ( gDrawInfo.aFilter == ImageFilter_Count )
 			gDrawInfo.aFilter = ImageFilter_Nearest;
+
+		ImageView_SetImageFilter( gDrawInfo.aFilter );
 	}
+
+	gDrawInfo.aFilter = ImageView_GetImageFilter();
+
+	std::string filter = "Filter: ";
+
+	switch ( gDrawInfo.aFilter )
+	{
+		case ImageFilter_Nearest:
+			filter += "Nearest";
+			break;
+
+		case ImageFilter_Linear:
+			filter += "Linear";
+			break;
+
+		case ImageFilter_Cubic:
+			filter += "Cubic";
+			break;
+
+		// case ImageFilter_Gaussian:
+		// 	// filter += "Gaussian";
+		// 	filter += "Cubic (Compute)";
+		// 	break;
+	}
+
+	ImGui::Text( filter.c_str() );
 
 	Render_DrawImage( gpImageInfo, gDrawInfo );
 }

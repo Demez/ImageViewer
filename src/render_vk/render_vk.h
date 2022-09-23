@@ -32,44 +32,40 @@ extern PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
 
 
-
-struct QueueFamilyIndices
+template< typename SELF, typename T >
+class vec2_base
 {
-	int  aPresentFamily  = -1;
-	int  aGraphicsFamily = -1;
+  public:
+	vec2_base( T x = 0.0, T y = 0.0 ) :
+		x( x ), y( y )
+	{
+	}
 
-	// Function that returns true if there is a valid queue family available.
-	bool Complete() { return ( aPresentFamily > -1 ) && ( aGraphicsFamily > -1 ); }
-};
+	T               x{}, y{};
 
+	constexpr T operator[]( int i )
+	{
+		// index into memory where vars are stored, and clamp to not read garbage
+		return *( &x + std::clamp( i, 0, 1 ) );
+	}
 
-struct SwapChainSupportInfo
-{
-	VkSurfaceCapabilitiesKHR          aCapabilities;
-	std::vector< VkSurfaceFormatKHR > aFormats;
-	std::vector< VkPresentModeKHR >   aPresentModes;
-};
+	constexpr void operator=( const SELF& other )
+	{
+		// Guard self assignment
+		if ( this == &other )
+			return;
 
+		std::memcpy( &x, &other.x, sizeof( SELF ) );
+	}
 
-struct TextureVK
-{
-	size_t         aIndex;
+	constexpr bool operator==( const SELF& other )
+	{
+		// Guard self assignment
+		if ( this == &other )
+			return true;
 
-	u16            aWidth;
-	u16            aHeight;
-
-	VkImage        aImage;
-	VkImageView    aImageView;
-	VkDeviceMemory aMemory;
-	ImageFilter    aFilter;
-	bool           aRenderTarget = false;
-};
-
-
-struct RenderTarget
-{
-	std::vector< TextureVK* >    aImages;
-	std::vector< VkFramebuffer > aFrameBuffers;
+		return !( std::memcmp( &x, &other.x, sizeof( SELF ) ) );
+	}
 };
 
 
@@ -105,6 +101,16 @@ class vec2
 			return true;
 
 		return !( std::memcmp( &x, &other.x, sizeof( vec2 ) ) );
+	}
+};
+
+
+class ivec2 : public vec2_base< ivec2, int >
+{
+  public:
+	ivec2( int x = 0.f, int y = 0.f ) :
+		vec2_base( x, y )
+	{
 	}
 };
 
@@ -145,20 +151,42 @@ class vec3
 };
 
 
-// meh
-struct ImgVert_t
+struct QueueFamilyIndices
 {
-	vec2 aPos;
-	vec2 aUV;
+	int  aPresentFamily  = -1;
+	int  aGraphicsFamily = -1;
+
+	// Function that returns true if there is a valid queue family available.
+	bool Complete() { return ( aPresentFamily > -1 ) && ( aGraphicsFamily > -1 ); }
 };
 
 
-struct ImgPush_t
+struct SwapChainSupportInfo
 {
-	vec2 aScale;
-	vec2 aTranslate;
-	int aTexIndex;
+	VkSurfaceCapabilitiesKHR          aCapabilities;
+	std::vector< VkSurfaceFormatKHR > aFormats;
+	std::vector< VkPresentModeKHR >   aPresentModes;
 };
+
+
+struct TextureVK
+{
+	size_t         aIndex;
+	ivec2          aSize;
+	VkImage        aImage;
+	VkImageView    aImageView;
+	VkDeviceMemory aMemory;
+	ImageFilter    aFilter;
+	bool           aRenderTarget = false;
+};
+
+
+struct RenderTarget
+{
+	std::vector< TextureVK* >    aImages;
+	std::vector< VkFramebuffer > aFrameBuffers;
+};
+
 
 // --------------------------------------------------------------------------------------
 // General
@@ -227,8 +255,20 @@ void                                  VK_CreateDescSets();
 void                                  VK_DestroyDescSets();
 
 VkDescriptorPool                      VK_GetDescPool();
-VkDescriptorSetLayout                 VK_GetDescImageSet();
-VkDescriptorSetLayout                 VK_GetDescBufferSet();
+// VkDescriptorSetLayout                 VK_GetDescImageSet();
+// VkDescriptorSetLayout                 VK_GetDescBufferSet();
+
+VkDescriptorSetLayout                 VK_GetImageLayout();
+VkDescriptorSetLayout                 VK_GetImageStorageLayout();
+
+const std::vector< VkDescriptorSet >& VK_GetImageSets();
+const std::vector< VkDescriptorSet >& VK_GetImageStorage();
+VkDescriptorSet                       VK_GetImageSet( size_t sIndex );
+void                                  VK_UpdateImageSets();
+
+void                                  VK_AddImageStorage( TextureVK* spTexture );
+void                                  VK_RemoveImageStorage( TextureVK* spTexture );
+void                                  VK_UpdateImageStorage();
 
 // --------------------------------------------------------------------------------------
 // Command Pool
@@ -250,7 +290,11 @@ VkRenderPass                          VK_GetRenderPass();
 // Present
 
 void                                  VK_CreateFences();
+void                                  VK_DestroyFences();
+
 void                                  VK_CreateSemaphores();
+void                                  VK_DestroySemaphores();
+
 void                                  VK_AllocateCommands();
 void                                  VK_FreeCommands();
 void                                  VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc );
@@ -268,10 +312,27 @@ void                                  VK_Present();
 // void                                  VK_DrawShader();
 
 // --------------------------------------------------------------------------------------
+// Image Filter Shader
+
+void                                  VK_CreateFilterShader();
+void                                  VK_DestroyFilterShader();
+
+void                                  VK_RunFilterShader();
+void                                  VK_AddFilterTask( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
+void                                  VK_PostImageFilter();
+
+// --------------------------------------------------------------------------------------
 // Image Shader
 // shouldn't really be here, but for this type of program? it's probably fine
+
+VkShaderModule                        VK_CreateShaderModule( u32* spByteCode, u32 sSize );
+void                                  VK_DestroyShaderModule( VkShaderModule shaderModule );
+
 void                                  VK_ClearDrawQueue();
+
 void                                  VK_CreateImageShader();
+void                                  VK_DestroyImageShader();
+
 void                                  VK_BindImageShader();
 void                                  VK_DrawImageShader();
 void                                  VK_AddImageDrawInfo( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
@@ -287,9 +348,11 @@ void                                  VK_DestroyBuffer( VkBuffer& srBuffer, VkDe
 
 VkSampler                             VK_GetSampler( ImageFilter filter );
 
+TextureVK*                            VK_CreateTexture( const ivec2& srSize, VkFormat sFormat );
 TextureVK*                            VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& sData );
 void                                  VK_DestroyTexture( ImageInfo* spImageInfo );
 void                                  VK_DestroyTexture( TextureVK* spTexture );
+void                                  VK_DestroyAllTextures();
 TextureVK*                            VK_GetTexture( ImageInfo* spImageInfo );
 RenderTarget*                         VK_CreateRenderTarget( const std::vector< TextureVK* >& srImages, u16 sWidth, u16 sHeight, const std::vector< VkImageView >& srSwapImages = {} );
 void                                  VK_DestroyRenderTarget( RenderTarget* spTarget );
@@ -298,10 +361,7 @@ void                                  VK_RebuildRenderTargets();
 
 RenderTarget*                         VK_GetBackBuffer();
 
-void                                  VK_CreateImageLayout();
-VkDescriptorSetLayout                 VK_GetImageLayout();
+void                                  VK_SetImageLayout( VkImage sImage, VkImageLayout sOldLayout, VkImageLayout sNewLayout, VkImageSubresourceRange& sSubresourceRange );
+void                                  VK_SetImageLayout( VkImage sImage, VkImageLayout sOldLayout, VkImageLayout sNewLayout, u32 sMipLevels );
 
-const std::vector< VkDescriptorSet >& VK_GetImageSets();
-VkDescriptorSet                       VK_GetImageSet( size_t sIndex );
-void                                  VK_UpdateImageSets();
 

@@ -4,16 +4,20 @@
 
 #include <string>
 
-void                Args_Init( int argc, uchar* argv[] );
 
-bool                Args_Has( std::USTRING_VIEW search );
-int                 Args_Index( std::USTRING_VIEW search );
-int                 Args_Count();
+DLL_EXPORT void  Args_Init( int argc, uchar* argv[] );
 
-const std::USTRING& Args_Get( int index, const std::USTRING& fallback = _T("") );
-const std::USTRING& Args_GetValue( std::USTRING_VIEW search, const std::USTRING& fallback = _T("") );
+DLL_EXPORT bool  Args_Has( std::USTRING_VIEW search );
+DLL_EXPORT int   Args_Index( std::USTRING_VIEW search );
+DLL_EXPORT int   Args_Count();
+
+DLL_EXPORT const std::USTRING_VIEW& Args_Get( int index, const std::USTRING& fallback = _T("") );
+DLL_EXPORT const std::USTRING_VIEW& Args_GetValue( std::USTRING_VIEW search, const std::USTRING& fallback = _T("") );
 
 // function to be able to find multiple values
 // returns true if it finds a value, false if it fails to
-bool                Args_GetNext( int& i, std::USTRING_VIEW search, std::USTRING& ret );
+DLL_EXPORT bool                     Args_GetNext( int& i, std::USTRING_VIEW search, std::USTRING& ret );
+
+
+#define ARGS_HAS( search ) Args_Has( _T( search ) )
 

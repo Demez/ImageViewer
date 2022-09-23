@@ -84,7 +84,7 @@ void WatchDirectory( fs::path lpDir )
 	// Change notification is set. Now wait on both notification
 	// handles and refresh accordingly.
 
-	while ( !gScanPathChanged )
+	while ( !gScanPathChanged && Plat_WindowOpen() )
 	{
 		// Wait for notification.
 		dwWaitStatus = WaitForMultipleObjects( 2, dwChangeHandles, FALSE, 500 );
@@ -134,7 +134,7 @@ void WatchDirectory( fs::path lpDir )
 
 void FolderMonitorFunc()
 {
-	while ( gRunning )
+	while ( gRunning && Plat_WindowOpen() )
 	{
 		if ( gScanPathChanged )
 			gScanPathChanged = false;
@@ -158,6 +158,8 @@ bool FolderMonitor_Init()
 
 void FolderMonitor_Shutdown()
 {
+	gRunning = false;
+	gFolderMonitorThread.join();
 }
 
 

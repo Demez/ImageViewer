@@ -75,7 +75,7 @@ public:
 		}
 
         srData.resize( size );
-		err = spng_decode_image( ctx, srData.data(), size, pngFmt, 0 );
+		err = spng_decode_image( ctx, srData.data(), size, pngFmt, SPNG_DECODE_TRNS );
 		if ( err != 0 )
 		{
 			printf( "[FormatPNG] Failed to decode image: %s\n", spng_strerror( err ) );
@@ -88,7 +88,8 @@ public:
 		imageData->aWidth    = ihdr.width;
 		imageData->aHeight   = ihdr.height;
 		imageData->aBitDepth = ihdr.bit_depth;
-		imageData->aFormat   = pngFmt == SPNG_FMT_RGBA8 ? FMT_RGBA8 : FMT_RGB8;
+		// imageData->aFormat   = pngFmt == SPNG_FMT_RGBA8 ? FMT_RGBA8 : FMT_RGB8;
+		imageData->aFormat   = FMT_RGBA8;
 
         spng_ctx_free( ctx );
 

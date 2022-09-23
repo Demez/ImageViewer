@@ -4,10 +4,10 @@
 #include <string>
 
 
-std::vector< std::USTRING > gArgs;
+static std::vector< std::USTRING_VIEW > gArgs;
 
 
-void Args_Init( int argc, uchar* argv[] )
+DLL_EXPORT void Args_Init( int argc, uchar* argv[] )
 {
 	gArgs.resize( argc );
 	for ( int i = 0; i < argc; i++ )
@@ -23,7 +23,7 @@ void Args_Init( int argc, uchar* argv[] )
 }
 
 
-bool Args_Has( std::USTRING_VIEW search )
+DLL_EXPORT bool Args_Has( std::USTRING_VIEW search )
 {
 	for ( auto& arg : gArgs )
 		if ( arg == search )
@@ -33,7 +33,7 @@ bool Args_Has( std::USTRING_VIEW search )
 }
 
 
-int Args_Index( std::USTRING_VIEW search )
+DLL_EXPORT int Args_Index( std::USTRING_VIEW search )
 {
 	for ( int i = 0; i < gArgs.size(); i++ )
 		if ( gArgs[ i ] == search )
@@ -43,13 +43,13 @@ int Args_Index( std::USTRING_VIEW search )
 }
 
 
-int Args_Count()
+DLL_EXPORT int Args_Count()
 {
 	return gArgs.size();
 }
 
 
-const std::USTRING& Args_Get( int index, const std::USTRING& fallback )
+DLL_EXPORT const std::USTRING_VIEW& Args_Get( int index, const std::USTRING& fallback )
 {
 	if ( index == -1 || index > gArgs.size() )
 		return fallback;
@@ -58,7 +58,7 @@ const std::USTRING& Args_Get( int index, const std::USTRING& fallback )
 }
 
 
-const std::USTRING& Args_GetValue( std::USTRING_VIEW search, const std::USTRING& fallback )
+DLL_EXPORT const std::USTRING_VIEW& Args_GetValue( std::USTRING_VIEW search, const std::USTRING& fallback )
 {
 	int i = Args_Index( search );
 
@@ -71,7 +71,7 @@ const std::USTRING& Args_GetValue( std::USTRING_VIEW search, const std::USTRING&
 
 // function to be able to find multiple values
 // returns true if it finds a value, false if it fails to
-bool Args_GetNext( int& i, std::USTRING_VIEW search, std::USTRING& ret )
+DLL_EXPORT bool Args_GetNext( int& i, std::USTRING_VIEW search, std::USTRING& ret )
 {
 	for ( ; i < gArgs.size(); i++ )
 	{

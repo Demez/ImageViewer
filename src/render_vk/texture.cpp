@@ -7,19 +7,13 @@
 #include "render_vk.h"
 
 
-// VkSampler                                    gSampler = VK_NULL_HANDLE;
-VkSampler                                    gSamplers[ ImageFilter_Count ]{ nullptr, nullptr };
+VkSampler                                    gSamplers[ ImageFilter_VulkanCount ]{};
 
+std::vector< TextureVK* >                    gTextures;
 static std::vector< RenderTarget* >          gRenderTargets;
-static std::vector< TextureVK* >             gTextures;
 static RenderTarget*                         gpBackBuffer = nullptr;
 
-std::vector< VkDescriptorSet >               gImageSets;
-VkDescriptorSetLayout                        gImageLayout;
-
 std::unordered_map< ImageInfo*, TextureVK* > gImageMap;
-
-constexpr u32                                MAX_IMAGES = 1000;
 
 
 void VK_SetImageLayout( VkImage sImage, VkImageLayout sOldLayout, VkImageLayout sNewLayout, VkImageSubresourceRange& sSubresourceRange )
@@ -112,7 +106,6 @@ void VK_SetImageLayout( VkImage sImage, VkImageLayout sOldLayout, VkImageLayout 
 }
 
 
-
 void VK_SetImageLayout( VkImage sImage, VkImageLayout sOldLayout, VkImageLayout sNewLayout, u32 sMipLevels )
 {
 	VkImageSubresourceRange subresourceRange{};
@@ -142,11 +135,9 @@ VkFormat VK_GetFormat( PixelFormat pixFmt )
 // NOTE: may need to change this for texture filtering later, oh boy
 VkSampler VK_GetSampler( ImageFilter filter )
 {
-	if ( filter > ImageFilter_Count )
+	if ( filter >= ImageFilter_VulkanCount )
 	{
-		printf( "VK_GetSampler(): Image Filter out of range, defaulting to nearest\n" );
 		filter = ImageFilter_Nearest;
-		// return nullptr;
 	}
 
 	if ( gSamplers[filter] )
@@ -156,6 +147,9 @@ VkSampler VK_GetSampler( ImageFilter filter )
 
 	if ( filter == ImageFilter_Linear )
 		vkFilter = VK_FILTER_LINEAR;
+
+	else if ( filter == ImageFilter_Cubic )
+		vkFilter = VK_FILTER_CUBIC_IMG;
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -171,7 +165,7 @@ VkSampler VK_GetSampler( ImageFilter filter )
 	samplerInfo.anisotropyEnable        = VK_TRUE;
 	samplerInfo.maxAnisotropy           = properties.limits.maxSamplerAnisotropy;
 	samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE; 
 	samplerInfo.compareEnable           = VK_FALSE;
 	samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
 	samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -189,6 +183,64 @@ TextureVK* VK_NewTexture()
 {
 	TextureVK* tex = gTextures.emplace_back( new TextureVK );
 	tex->aIndex    = gTextures.size() - 1;
+	return tex;
+}
+
+
+TextureVK* VK_CreateTexture( const ivec2& srSize, VkFormat sFormat )  // , VkImageUsageFlagBits sUsage 
+{
+	TextureVK* tex = gTextures.emplace_back( new TextureVK );
+	tex->aIndex    = gTextures.size() - 1;
+	tex->aSize     = srSize;
+
+	VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+	createInfo.imageType     = VK_IMAGE_TYPE_2D;
+	createInfo.extent.width  = srSize.x;
+	createInfo.extent.height = srSize.y;
+	createInfo.extent.depth  = 1;
+	createInfo.mipLevels     = 1;
+	createInfo.arrayLayers   = 1;
+	createInfo.format        = sFormat;
+	createInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	createInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+	createInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+	createInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+	VK_CheckResult( vkCreateImage( VK_GetDevice(), &createInfo, NULL, &tex->aImage ), "Failed to create image" );
+
+	// Allocate and Bind Image Memory
+	{
+		VkMemoryRequirements memRequirements;
+		vkGetImageMemoryRequirements( VK_GetDevice(), tex->aImage, &memRequirements );
+
+		VkMemoryAllocateInfo allocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+		allocInfo.allocationSize  = memRequirements.size;
+		allocInfo.memoryTypeIndex = VK_GetMemoryType( memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+
+		VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, NULL, &tex->aMemory ), "Failed to allocate image memory" );
+
+		VK_CheckResult( vkBindImageMemory( VK_GetDevice(), tex->aImage, tex->aMemory, 0 ), "Failed to bind image memory" );
+	}
+
+	VK_SetImageLayout( tex->aImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1 );
+
+	// Create Image View
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image                           = tex->aImage;
+	viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;  // TODO: CHANGE THIS FOR ANIMATED IMAGE SUPPORT !!!!!!
+	viewInfo.format                          = sFormat;
+	viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel   = 0;
+	viewInfo.subresourceRange.levelCount     = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount     = 1;
+
+	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &viewInfo, nullptr, &tex->aImageView ), "Failed to create Image View" );
+
+	VK_UpdateImageSets();
+
 	return tex;
 }
 
@@ -213,6 +265,8 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 
 	TextureVK*        tex = gTextures.emplace_back( new TextureVK );
 	tex->aIndex           = gTextures.size() - 1;
+	tex->aSize.x          = spImageInfo->aWidth;
+	tex->aSize.y          = spImageInfo->aHeight;
 
 	VK_CreateBuffer( stagingBuffer, stagingMemory, sData.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
@@ -229,7 +283,7 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 	createInfo.format        = vkFormat;
 	createInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
 	createInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	createInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	createInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 	createInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
 	createInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -246,7 +300,7 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 
 		VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, NULL, &tex->aMemory ), "Failed to allocate image memory" );
 
-		vkBindImageMemory( VK_GetDevice(), tex->aImage, tex->aMemory, 0 );
+		VK_CheckResult( vkBindImageMemory( VK_GetDevice(), tex->aImage, tex->aMemory, 0 ), "Failed to bind image memory" );
 	}
 
 	VK_SetImageLayout( tex->aImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1 );
@@ -325,6 +379,33 @@ void VK_DestroyTexture( ImageInfo* spImageInfo )
 	VK_DestroyTexture( find->second );
 
 	gImageMap.erase( spImageInfo );
+}
+
+
+void VK_DestroyAllTextures()
+{
+	for ( auto& tex : gTextures )
+	{
+		if ( !tex )
+			continue;
+
+		vkDestroyImageView( VK_GetDevice(), tex->aImageView, nullptr );
+		vkDestroyImage( VK_GetDevice(), tex->aImage, nullptr );
+
+		// TODO: probably change this so i don't call delete on the texture, and maybe i can reuse this image memory somehow
+		vkFreeMemory( VK_GetDevice(), tex->aMemory, nullptr );
+		delete tex;
+	}
+
+	for ( auto& sampler : gSamplers )
+	{
+		if ( sampler )
+			vkDestroySampler( VK_GetDevice(), sampler, nullptr );
+	}
+
+	gTextures.clear();
+	gImageMap.clear();
+	memset( gSamplers, 0, ImageFilter_VulkanCount );
 }
 
 
@@ -562,154 +643,3 @@ RenderTarget* VK_GetBackBuffer()
 	}
 	return gpBackBuffer;
 }
-
-
-void VK_AllocImageSets()
-{
-	uint32_t                                           counts[] = { MAX_IMAGES, MAX_IMAGES };
-	VkDescriptorSetVariableDescriptorCountAllocateInfo dc{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO };
-	dc.descriptorSetCount = VK_GetSwapImageCount();
-	dc.pDescriptorCounts  = counts;
-
-	std::vector< VkDescriptorSetLayout > layouts( VK_GetSwapImageCount(), gImageLayout );
-
-	VkDescriptorSetAllocateInfo a{};
-	a.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	a.pNext              = &dc;
-	a.descriptorPool     = VK_GetDescPool();
-	a.descriptorSetCount = VK_GetSwapImageCount();
-	a.pSetLayouts        = layouts.data();
-
-	gImageSets.resize( VK_GetSwapImageCount() );
-	VK_CheckResult( vkAllocateDescriptorSets( VK_GetDevice(), &a, gImageSets.data() ), "Failed to allocate descriptor sets!" );
-}
-
-
-void VK_UpdateImageSets()
-{
-	if ( !gTextures.size() )
-		return;
-
-	// hmm, this doesn't crash on Nvidia, though idk how AMD would react
-	// also would this be >= or just >, lol
-	if ( gTextures.size() >= MAX_IMAGES )
-	{
-		// LogFatal( "Over Max Images allocated (at %d, max is %d)", (int)srImages.size(), MAX_IMAGES );
-		LogFatal( "Over Max Images allocated" );
-	}
-
-	for ( uint32_t i = 0; i < gImageSets.size(); ++i )
-	{
-		std::vector< VkDescriptorImageInfo > infos;
-		size_t                               index = 0;
-
-		for ( uint32_t j = 0; j < gTextures.size(); ++j )
-		{
-			// skip render targets (for now at least)
-			if ( gTextures[ j ]->aRenderTarget )
-				continue;
-
-			VkDescriptorImageInfo img{};
-			img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			img.imageView   = gTextures[ j ]->aImageView;
-			img.sampler     = VK_GetSampler( gTextures[ j ]->aFilter );
-
-			gTextures[ j ]->aIndex = index++;
-			infos.push_back( img );
-		}
-
-		VkWriteDescriptorSet w{};
-		w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		w.dstBinding      = 0;
-		w.dstArrayElement = 0;
-		w.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		w.descriptorCount = infos.size();
-		w.pBufferInfo     = 0;
-		w.dstSet          = gImageSets[ i ];
-		w.pImageInfo      = infos.data();
-
-		vkUpdateDescriptorSets( VK_GetDevice(), 1, &w, 0, nullptr );
-	}
-}
-
-void VK_UpdateImageSet( TextureVK* spTexture )
-{
-	for ( uint32_t i = 0; i < gImageSets.size(); ++i )
-	{
-		std::vector< VkDescriptorImageInfo > infos;
-		for ( uint32_t j = 0; j < gTextures.size(); ++j )
-		{
-			VkDescriptorImageInfo img{};
-			img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			img.imageView   = gTextures[ j ]->aImageView;
-			img.sampler     = VK_GetSampler( gTextures[ j ]->aFilter );
-
-			infos.push_back( img );
-		}
-
-		VkWriteDescriptorSet w{};
-		w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		w.dstBinding      = 0;
-		w.dstArrayElement = 0;
-		w.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		w.descriptorCount = gTextures.size();
-		w.pBufferInfo     = 0;
-		w.dstSet          = gImageSets[ i ];
-		w.pImageInfo      = infos.data();
-
-		vkUpdateDescriptorSets( VK_GetDevice(), 1, &w, 0, nullptr );
-	}
-}
-
-
-void VK_CreateImageLayout()
-{
-	VkDescriptorSetLayoutBinding imageBinding{};
-	imageBinding.descriptorCount                            = MAX_IMAGES;
-	imageBinding.descriptorType                             = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	imageBinding.stageFlags                                 = VK_SHADER_STAGE_FRAGMENT_BIT;
-	imageBinding.binding                                    = 0;
-
-	VkDescriptorBindingFlagsEXT                    bindFlag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
-
-	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT extend{};
-	extend.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-	extend.pNext         = nullptr;
-	extend.bindingCount  = 1;
-	extend.pBindingFlags = &bindFlag;
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.pNext        = &extend;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings    = &imageBinding;
-
-	VK_CheckResult( vkCreateDescriptorSetLayout( VK_GetDevice(), &layoutInfo, NULL, &gImageLayout ), "Failed to create image descriptor set layout!" );
-
-	VK_AllocImageSets();
-}
-
-
-VkDescriptorSetLayout VK_GetImageLayout()
-{
-	return gImageLayout;
-}
-
-
-const std::vector< VkDescriptorSet >& VK_GetImageSets()
-{
-	return gImageSets;
-}
-
-
-VkDescriptorSet VK_GetImageSet( size_t sIndex )
-{
-	if ( gImageSets.size() >= sIndex )
-	{
-		printf( "VK_GetImageSet() - sIndex out of range!\n" );
-		return nullptr;
-	}
-
-	return gImageSets[ sIndex ];
-}
-

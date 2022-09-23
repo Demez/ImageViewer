@@ -177,6 +177,9 @@ VkCommandPool& VK_GetPrimaryCommandPool()
 }
 
 
+static std::vector< VkBuffer > gBuffers;
+
+
 void VK_CreateBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem, u32 sBufferSize, VkBufferUsageFlags sUsage, int sMemBits )
 {
 	// create a vertex buffer
@@ -199,13 +202,18 @@ void VK_CreateBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem, u32 sBuff
 
 	// bind the vertex buffer to the device memory
 	VK_CheckResult( vkBindBufferMemory( VK_GetDevice(), srBuffer, srBufferMem, 0 ), "Failed to bind buffer" );
+
+	gBuffers.push_back( srBuffer );
 }
 
 
 void VK_DestroyBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem )
 {
 	if ( srBuffer )
+	{
+		vec_remove( gBuffers, srBuffer );
 		vkDestroyBuffer( VK_GetDevice(), srBuffer, nullptr );
+	}
 
 	if ( srBufferMem )
 		vkFreeMemory( VK_GetDevice(), srBufferMem, nullptr );
@@ -251,7 +259,6 @@ bool Render_Init( void* spWindow )
 	VK_CreateSurface( spWindow );
 	VK_SetupPhysicalDevice();
 	VK_CreateDevice();
-	VK_CreateDescSets();
 
 	VK_CreateCommandPool( VK_GetSingleTimeCommandPool() );
 	VK_CreateCommandPool( VK_GetPrimaryCommandPool() );
@@ -259,6 +266,7 @@ bool Render_Init( void* spWindow )
 	VK_CreateSwapchain();
 	VK_CreateFences();
 	VK_CreateSemaphores();
+	VK_CreateDescSets();
 
 	VK_AllocateCommands();
 	
@@ -270,8 +278,11 @@ bool Render_Init( void* spWindow )
 	}
 
 	// Load up image shader and create buffer for image mesh
-	VK_CreateImageLayout();
+	// VK_CreateImageLayout();
+	// VK_CreateImageStorageLayout();
+
 	VK_CreateImageShader();
+	VK_CreateFilterShader();
 
 	printf( "Render: Loaded Vulkan Renderer\n" );
 
@@ -281,13 +292,26 @@ bool Render_Init( void* spWindow )
 
 void Render_Shutdown()
 {
-	VK_DestroyInstance();
-	VK_DestroySurface();
-	VK_DestroyDescSets();
+	ImGui_ImplVulkan_Shutdown();
+
 	VK_DestroySwapchain();
+	VK_DestroyRenderTargets();
+	VK_DestroyRenderPasses();
+
+	VK_DestroyAllTextures();
+	VK_DestroyFilterShader();
+	VK_DestroyImageShader();
+
 	VK_FreeCommands();
+
+	VK_DestroyFences();
+	VK_DestroySemaphores();
 	VK_DestroyCommandPool( VK_GetSingleTimeCommandPool() );
 	VK_DestroyCommandPool( VK_GetPrimaryCommandPool() );
+	VK_DestroySurface();
+	VK_DestroyDescSets();
+
+	VK_DestroyInstance();
 }
 
 
