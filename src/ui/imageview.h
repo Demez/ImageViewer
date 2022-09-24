@@ -16,6 +16,14 @@ enum ImageZoomType
 };
 
 
+struct ImageLoadThreadData_t
+{
+	fs::path            aPath;
+	ImageInfo*          aInfo = nullptr;  // check to see if this is valid for if it's done loading
+	std::vector< char > aData;
+};
+
+
 // TODO:
 // - create an image thumbnail cache
 // - store data for up to X amount of images to stay loaded in memory when switching
@@ -23,11 +31,8 @@ enum ImageZoomType
 // - implement better scaling of images at lower resolutions
 // - maybe for higher resolutions with an option of disabling some filter above a certain zoom level
 
-// might remove this HandleEvent later if i decide to try win32 api
-// void            ImageView_HandleEvent( SDL_Event& srEvent );
-
-// Events
-void            ImageView_EventMouseMotion( int xrel, int yrel );
+void            ImageLoadThread_AddTask( ImageLoadThreadData_t* srData );
+void            ImageLoadThread_RemoveTask( ImageLoadThreadData_t* srData );
 
 void            ImageView_Update();
 void            ImageView_Draw();

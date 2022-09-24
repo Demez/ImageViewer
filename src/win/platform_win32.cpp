@@ -275,7 +275,7 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 	switch ( uMsg )
 	{
 		case WM_MOUSEMOVE:
-		// case WM_MOUSEWHEEL:
+		case WM_MOUSEWHEEL:
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
@@ -286,6 +286,8 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		case WM_KEYDOWN:
 		case WM_SYSKEYUP:
 		case WM_KEYUP:
+		case WM_SHOWWINDOW:
+		case WM_NCACTIVATE:
 		{
 			Main_ShouldDrawWindow();
 			break;
@@ -467,6 +469,8 @@ void Plat_Update()
 
 	memset( gKeyDown, false, KEY_COUNT );
 
+	ImGui_ImplWin32_NewFrame();
+
 	MSG msg = {};
 	// NOTE: if you put gHWID in, drag and drop's just break horribly
 	// it will freeze the source window, and this window only updates when resized or moved around after
@@ -484,7 +488,7 @@ void Plat_Update()
 	gMousePosPrev[ 0 ] = gMousePos[ 0 ];
 	gMousePosPrev[ 1 ] = gMousePos[ 1 ];
 
-	ImGui_ImplWin32_NewFrame();
+	// ImGui_ImplWin32_NewFrame();
 }
 
 

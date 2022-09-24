@@ -19,6 +19,7 @@
 
 
 ULONG gDropFormats[] = {
+	// CF_TEXT,   // dragging in a file path/url from discord or your internet browser
 	CF_HDROP,  // file drop
 };
 
@@ -119,7 +120,7 @@ struct ImgDropTarget : public IDropTarget
 		}
 		else
 		{
-			*pdwEffect = DROPEFFECT_SCROLL;
+			*pdwEffect = DROPEFFECT_SCROLL; // actually shows the "invalid" cursor or whatever it's called
 		}
 
 		return S_OK;

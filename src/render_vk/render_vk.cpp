@@ -21,6 +21,8 @@ float                gClearB = 0.f;
 static VkCommandPool gSingleTime;
 static VkCommandPool gPrimary;
 
+static std::unordered_map< ImageInfo*, VkDescriptorSet > gImGuiTextures;
+
 
 char const* VKString( VkResult sResult )
 {
@@ -391,5 +393,51 @@ void Render_FreeImage( ImageInfo* spInfo )
 void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 {
 	VK_AddImageDrawInfo( spInfo, srDrawInfo );
+}
+
+
+void Render_DownscaleImage( ImageInfo* spInfo, const ivec2& srDestSize )
+{
+	VK_AddFilterTask( spInfo, srDestSize );
+}
+
+
+void* Render_GetImageSurface( ImageInfo* spInfo )
+{
+	// return texture descriptor
+
+
+
+	return nullptr;
+}
+
+
+ImTextureID Render_AddTextureToImGui( ImageInfo* spInfo )
+{
+	if ( spInfo == nullptr )
+	{
+		printf( "Render_AddTextureToImGui(): ImageInfo* is nullptr!\n" );
+		return nullptr;
+	}
+
+	TextureVK* tex = VK_GetTexture( spInfo );
+	if ( tex == nullptr )
+	{
+		printf( "Render_AddTextureToImGui(): No Vulkan Texture created for Image!\n" );
+		return nullptr;
+	}
+
+	VK_SetImageLayout( tex->aImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1 );
+
+	auto desc = ImGui_ImplVulkan_AddTexture( VK_GetSampler( tex->aFilter ), tex->aImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+
+	if ( desc )
+	{
+		gImGuiTextures[ spInfo ] = desc;
+		return desc;
+	}
+
+	printf( "Render_AddTextureToImGui(): Failed to add texture to ImGui\n" );
+	return nullptr;
 }
 

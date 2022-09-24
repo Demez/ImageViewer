@@ -32,125 +32,6 @@ extern PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
 
 
-template< typename SELF, typename T >
-class vec2_base
-{
-  public:
-	vec2_base( T x = 0.0, T y = 0.0 ) :
-		x( x ), y( y )
-	{
-	}
-
-	T               x{}, y{};
-
-	constexpr T operator[]( int i )
-	{
-		// index into memory where vars are stored, and clamp to not read garbage
-		return *( &x + std::clamp( i, 0, 1 ) );
-	}
-
-	constexpr void operator=( const SELF& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return;
-
-		std::memcpy( &x, &other.x, sizeof( SELF ) );
-	}
-
-	constexpr bool operator==( const SELF& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return true;
-
-		return !( std::memcmp( &x, &other.x, sizeof( SELF ) ) );
-	}
-};
-
-
-class vec2
-{
-  public:
-	vec2( float x = 0.f, float y = 0.f ) :
-		x( x ), y( y )
-	{
-	}
-
-	float           x{}, y{};
-
-	constexpr float operator[]( int i )
-	{
-		// index into memory where vars are stored, and clamp to not read garbage
-		return *( &x + std::clamp( i, 0, 1 ) );
-	}
-
-	constexpr void operator=( const vec2& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return;
-
-		std::memcpy( &x, &other.x, sizeof( vec2 ) );
-	}
-
-	constexpr bool operator==( const vec2& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return true;
-
-		return !( std::memcmp( &x, &other.x, sizeof( vec2 ) ) );
-	}
-};
-
-
-class ivec2 : public vec2_base< ivec2, int >
-{
-  public:
-	ivec2( int x = 0.f, int y = 0.f ) :
-		vec2_base( x, y )
-	{
-	}
-};
-
-
-class vec3
-{
-  public:
-	vec3( float x = 0.f, float y = 0.f, float z = 0.f ) :
-		x( x ), y( y ), z( z )
-	{
-	}
-
-	float           x{}, y{}, z{};
-
-	constexpr float operator[]( int i )
-	{
-		// index into memory where vars are stored, and clamp to not read garbage
-		return *( &x + std::clamp( i, 0, 2 ) );
-	}
-
-	constexpr void operator=( const vec3& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return;
-
-		std::memcpy( &x, &other.x, sizeof( vec3 ) );
-	}
-
-	constexpr bool operator==( const vec3& other )
-	{
-		// Guard self assignment
-		if ( this == &other )
-			return true;
-
-		return !( std::memcmp( &x, &other.x, sizeof( vec3 ) ) );
-	}
-};
-
-
 struct QueueFamilyIndices
 {
 	int  aPresentFamily  = -1;
@@ -318,7 +199,7 @@ void                                  VK_CreateFilterShader();
 void                                  VK_DestroyFilterShader();
 
 void                                  VK_RunFilterShader();
-void                                  VK_AddFilterTask( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
+void                                  VK_AddFilterTask( ImageInfo* spInfo, const ivec2& srDestSize );
 void                                  VK_PostImageFilter();
 
 // --------------------------------------------------------------------------------------

@@ -203,3 +203,20 @@ void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 	SDL_RenderCopy( gRenderer, tex, nullptr, &dstRect );
 }
 
+
+void Render_DownscaleImage( ImageInfo* spInfo, const ivec2& srDestSize )
+{
+}
+
+
+ImTextureID Render_AddTextureToImGui( ImageInfo* spInfo )
+{
+	if ( spInfo == nullptr )
+	{
+		printf( "Render_AddTextureToImGui(): ImageInfo* is nullptr!\n" );
+		return nullptr;
+	}
+
+	printf( "Render_AddTextureToImGui(): Unimplemented in SDL2\n" );
+	return nullptr;
+}

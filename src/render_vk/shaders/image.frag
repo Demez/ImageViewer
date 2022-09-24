@@ -20,11 +20,13 @@ void main()
 {
     if ( push.filterType == ImageFilter_Cubic )
 	{
-		outColor = BiCubic( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
+		// outColor = BiCubic( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
+		outColor = DoPixelBinning( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
 	}
     else if ( push.filterType == ImageFilter_Gaussian )
 	{
         outColor = texture( texSamplers[push.texIndex+1], fragTexCoord );
+        // outColor = Lanczos( texSamplers[push.texIndex], fragTexCoord );
 	}
     else
     {

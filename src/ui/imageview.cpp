@@ -15,16 +15,70 @@
 //#include "async/async.h"
 
 
-fs::path         gImagePath;
-ImageInfo*       gpImageInfo = nullptr;
-ImageDrawInfo    gDrawInfo;
+fs::path                              gImagePath;
+ImageInfo*                            gpImageInfo = nullptr;
+ImageDrawInfo                         gDrawInfo;
 
-ImageFilter      gZoomOutFilter = ImageFilter_Cubic;
-ImageFilter      gZoomInFilter  = ImageFilter_Nearest;
+ImageFilter                           gZoomOutFilter = ImageFilter_Cubic;
+ImageFilter                           gZoomInFilter  = ImageFilter_Nearest;
 
-size_t           gImageHandle   = 0;
-double           gZoomLevel     = 1.0f;
-bool             gGrabbed       = false;
+size_t                                gImageHandle   = 0;
+double                                gZoomLevel     = 1.0f;
+bool                                  gGrabbed       = false;
+
+std::vector< ImageLoadThreadData_t* > gLoadThreadQueue;
+std::vector< ImageLoadThreadData_t* > gImageDataQueue;
+// ImageLoadThreadData_t                 gImageData;
+
+
+// -------------------------------------------------------------------
+
+
+// TODO: probably use a mutex lock or something to have this sleep while not used
+void LoadImageFunc()
+{
+	while ( gRunning )
+	{
+		while ( gLoadThreadQueue.size() )
+		{
+			auto queueItem = gLoadThreadQueue[ 0 ];
+
+			if ( !queueItem->aInfo && !queueItem->aPath.empty() )
+			{
+				queueItem->aPath = fs_clean_path( queueItem->aPath );
+
+				if ( !( queueItem->aInfo = ImageLoader_LoadImage( queueItem->aPath, queueItem->aData ) ) )
+				{
+					// gNewImagePath.clear();
+				}
+
+				// NOTE: this is possible in Vulkan, need a different VkQueue i think, probably not SDL2 though
+				// gImageHandle = Render_LoadImage( queueItem->aInfo, queueItem->aData );
+			}
+
+			// if ( gLoadThreadQueue.size() && gLoadThreadQueue[ 0 ] == queueItem )
+			// 	gLoadThreadQueue.erase( gLoadThreadQueue.begin() );
+
+			vec_remove( gLoadThreadQueue, queueItem );
+		}
+
+		Plat_Sleep( 100 );
+	}
+}
+
+
+std::thread gLoadImageThread( LoadImageFunc );
+
+
+void ImageLoadThread_AddTask( ImageLoadThreadData_t* srData )
+{
+	gLoadThreadQueue.push_back( srData );
+}
+
+
+void ImageLoadThread_RemoveTask( ImageLoadThreadData_t* srData )
+{
+}
 
 
 // -------------------------------------------------------------------
@@ -106,44 +160,14 @@ void HandleWheelEvent( char scroll )
 	gDrawInfo.aY = mouseY - gZoomLevel / oldZoom * ( mouseY - gDrawInfo.aY );
 
 	Main_ShouldDrawWindow();
+
+	// lazy
+	if ( gDrawInfo.aFilter == ImageFilter_Gaussian )
+		Render_DownscaleImage( gpImageInfo, { gDrawInfo.aWidth, gDrawInfo.aHeight } );
 }
 
 
 // -------------------------------------------------------------------
-
-
-fs::path            gNewImagePath;
-ImageInfo*          gNewImageData = nullptr;
-std::vector< char > gReadData;
-
-
-void ImageView_SetImageInternal( const fs::path& path )
-{
-	gNewImagePath = fs_clean_path( path );
-
-	// TODO: this is a slow blocking operation on the main thread
-	// async or move this to a image loader thread and use a callback for when it's loaded
-	if ( !( gNewImageData = ImageLoader_LoadImage( gNewImagePath, gReadData ) ) )
-	{
-		gNewImagePath.clear();
-	}
-}
-
-
-// TODO: probably use a mutex lock or something to have this sleep while not used
-void LoadImageFunc()
-{
-	while ( gRunning )
-	{
-		if ( !gNewImageData && !gNewImagePath.empty() )
-			ImageView_SetImageInternal( gNewImagePath );
-
-		Plat_Sleep( 100 );
-	}
-}
-
-
-std::thread gLoadImageThread( LoadImageFunc );
 
 
 void ImageView_Shutdown()
@@ -181,9 +205,11 @@ void ImageView_LoadImage()
 	if ( gpImageInfo )
 		ImageView_RemoveImage();
 
-	gpImageInfo  = gNewImageData;
+	auto imageData = gImageDataQueue[ 0 ];
 
-	gImageHandle = Render_LoadImage( gpImageInfo, gReadData );
+	gpImageInfo    = imageData->aInfo;
+
+	gImageHandle   = Render_LoadImage( gpImageInfo, imageData->aData );
 
 	// default zoom settings for now
 	int width, height;
@@ -195,18 +221,21 @@ void ImageView_LoadImage()
 	gDrawInfo.aHeight = gpImageInfo->aHeight;
 	gDrawInfo.aFilter = gZoomOutFilter;
 
-	gImagePath        = gNewImagePath;
+	gImagePath        = imageData->aPath;
 
 	ImageView_FitInView();
 
 	// update image list
-	ImageList_SetPathFromFile( gNewImagePath );
+	ImageList_SetPathFromFile( imageData->aPath );
 
-	Plat_SetWindowTitle( L"Demez Image View - " + gNewImagePath.wstring() );
+	Plat_SetWindowTitle( L"Demez Image View - " + imageData->aPath.wstring() );
 
-	gNewImagePath.clear();
-	gNewImageData = nullptr;
-	gReadData.clear();
+	imageData->aPath.clear();
+	imageData->aData.clear();
+	imageData->aInfo = nullptr;
+
+	vec_remove( gImageDataQueue, imageData );
+	delete imageData;
 
 	Main_ShouldDrawWindow();
 }
@@ -214,7 +243,7 @@ void ImageView_LoadImage()
 
 void ImageView_Update()
 {
-	if ( gNewImageData )
+	if ( gImageDataQueue.size() && gImageDataQueue[ 0 ]->aInfo )
 	{
 		// an image being loaded in the background is now ready to be finished loading on the main thread
 		ImageView_LoadImage();
@@ -270,7 +299,7 @@ void ImageView_Draw()
 {
 	static bool wasLoading = false;
 
-	if ( !gNewImagePath.empty() )
+	if ( gImageDataQueue.size() && !gImageDataQueue[ 0 ]->aPath.empty() )
 	{
 		if ( !wasLoading )
 			Main_ShouldDrawWindow();
@@ -278,9 +307,9 @@ void ImageView_Draw()
 		wasLoading = true;
 		// thanks imgui for not having this use ImWchar
 #if _WIN32
-		std::string path = Plat_FromUnicode( gNewImagePath.c_str() );
+		std::string path = Plat_FromUnicode( gImageDataQueue[ 0 ]->aPath.c_str() );
 #else
-		std::string path = gNewImagePath.string();
+		std::string path = gImageDataQueue[ 0 ]->aPath.string();
 #endif
 
 		path = "Loading Image: " + path;
@@ -318,18 +347,23 @@ void ImageView_Draw()
 	}
 	else
 	{
+		if ( wasLoading )
+			Main_ShouldDrawWindow();
+
 		wasLoading = false;
-		Main_ShouldDrawWindow();
 	}
 
 	if ( !gpImageInfo )
 		return;
 
-
 	if ( ImGui::Button( "Switch Filter" ) )
 	{
 		gDrawInfo.aFilter += 1;
-		if ( gDrawInfo.aFilter == ImageFilter_Count )
+
+		if ( gDrawInfo.aFilter == ImageFilter_Gaussian )
+			Render_DownscaleImage( gpImageInfo, { gDrawInfo.aWidth, gDrawInfo.aHeight } );
+
+		else if ( gDrawInfo.aFilter == ImageFilter_Count )
 			gDrawInfo.aFilter = ImageFilter_Nearest;
 
 		ImageView_SetImageFilter( gDrawInfo.aFilter );
@@ -353,10 +387,10 @@ void ImageView_Draw()
 			filter += "Cubic";
 			break;
 
-		// case ImageFilter_Gaussian:
-		// 	// filter += "Gaussian";
-		// 	filter += "Cubic (Compute)";
-		// 	break;
+		case ImageFilter_Gaussian:
+			// filter += "Gaussian";
+			filter += "Cubic (Compute)";
+			break;
 	}
 
 	ImGui::Text( filter.c_str() );
@@ -367,7 +401,23 @@ void ImageView_Draw()
 
 void ImageView_SetImage( const fs::path& path )
 {
-	gNewImagePath = path;
+	ImageLoadThreadData_t* imageData = nullptr;
+	if ( gImageDataQueue.size() == 2 )
+	{
+		// replace the one in queue that's left untouched with this new path
+		imageData = gImageDataQueue[ 1 ];
+		imageData->aPath = path;
+	}
+	else
+	{
+		imageData = gImageDataQueue.emplace_back( new ImageLoadThreadData_t{ path } );
+	}
+
+	// gImageData.aPath = path;
+	// gImageData.aInfo = nullptr;
+	// gImageData.aData.clear();
+
+	ImageLoadThread_AddTask( imageData );
 }
 
 

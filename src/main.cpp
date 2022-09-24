@@ -13,24 +13,33 @@
 #include "imgui.h"
 
 
+// TODO LIST:
+// 
+// - be able to hold control and drag the image out as a drop source
+// - add an image gallery view with different view types
+// - for the image list, be able to hover over the image and get a larger preview
+// 
+
+
 Module gRenderer = 0;
 
 
-// uhh where tf do i put this
-Render_Init_t          Render_Init          = 0;
-Render_Shutdown_t      Render_Shutdown      = 0;
+Render_Init_t              Render_Init              = 0;
+Render_Shutdown_t          Render_Shutdown          = 0;
 
-Render_NewFrame_t      Render_NewFrame      = 0;
-Render_Reset_t         Render_Reset         = 0;
-Render_Present_t       Render_Present       = 0;
+Render_NewFrame_t          Render_NewFrame          = 0;
+Render_Reset_t             Render_Reset             = 0;
+Render_Present_t           Render_Present           = 0;
 
-Render_SetResolution_t Render_SetResolution = 0;
-Render_SetClearColor_t Render_SetClearColor = 0;
-Render_GetClearColor_t Render_GetClearColor = 0;
+Render_SetResolution_t     Render_SetResolution     = 0;
+Render_SetClearColor_t     Render_SetClearColor     = 0;
+Render_GetClearColor_t     Render_GetClearColor     = 0;
 
-Render_LoadImage_t     Render_LoadImage     = 0;
-Render_FreeImage_t     Render_FreeImage     = 0;
-Render_DrawImage_t     Render_DrawImage     = 0;
+Render_LoadImage_t         Render_LoadImage         = 0;
+Render_FreeImage_t         Render_FreeImage         = 0;
+Render_DrawImage_t         Render_DrawImage         = 0;
+Render_DownscaleImage_t    Render_DownscaleImage    = 0;
+Render_AddTextureToImGui_t Render_AddTextureToImGui = 0;
 
 
 #define LOAD_RENDER_FUNC( name ) \
@@ -76,6 +85,8 @@ bool LoadRenderer()
 	LOAD_RENDER_FUNC( Render_LoadImage );
 	LOAD_RENDER_FUNC( Render_FreeImage );
 	LOAD_RENDER_FUNC( Render_DrawImage );
+	LOAD_RENDER_FUNC( Render_DownscaleImage );
+	LOAD_RENDER_FUNC( Render_AddTextureToImGui );
 
 	return true;
 }
@@ -267,6 +278,7 @@ void Main_WindowDraw()
 		return;
 
 	gCanDraw = false;
+	gShouldDraw = false;
 
 	Render_NewFrame();
 
@@ -371,6 +383,7 @@ int entry()
 		ImageView_Update();
 
 		if ( Plat_WindowShown() && gShouldDraw )
+		// if ( Plat_WindowShown() )
 			Main_WindowDraw();
 
 		if ( Plat_WindowFocused() )
@@ -379,8 +392,7 @@ int entry()
 		else
 			Plat_Sleep( 20 );
 
-		gShouldDraw = false;
-		gCanDraw    = Plat_WindowOpen();
+		gCanDraw = Plat_WindowOpen();
 	}
 
 	Render_Shutdown();

@@ -41,6 +41,7 @@ static std::vector< char >              gReadData;
 // temp
 static ImageDrawInfo                    gDrawData;
 static size_t                           gImageHandle = 0;
+static void*                            gImGuiTexture = 0;
 
 
 void ImageList_LoadThumbnail( const fs::path& path )
@@ -53,6 +54,8 @@ void ImageList_LoadThumbnail( const fs::path& path )
 		return;
 
 	gImageHandle = Render_LoadImage( gNewImageData, gReadData );
+
+	gImGuiTexture = Render_AddTextureToImGui( gNewImageData );
 }
 
 
@@ -88,7 +91,7 @@ void ImageList_Update()
 	// TEMP !!!!
 	if ( gNewImageData == nullptr )
 	{
-		// ImageList_LoadThumbnail( gNewImagePath );
+		ImageList_LoadThumbnail( gNewImagePath );
 	}
 
 	// check folder monitor for if a change happened
@@ -100,59 +103,124 @@ void ImageList_Update()
 }
 
 
+constexpr int gImagePadding   = 4;
+static bool   gImageListShown = false;
+
+
 void ImageList_Draw()
 {
 	int width, height;
 	Plat_GetWindowSize( width, height );
 
+	int mousex, mousey;
+	Plat_GetMousePos( mousex, mousey );
+
+	char scrollWheel = Plat_GetMouseScroll();
+
+	// auto& io          = ImGui::GetIO();
+
 	ImGui::SetNextWindowPos( { 0, 0 } );
 	// ImGui::SetNextWindowSize( {(float)width, 64} );
-	ImGui::SetNextWindowSizeConstraints( { (float)width, 80 }, { (float)width, height/2.f } );
+	// ImGui::SetNextWindowSize( { (float)width, 20 }, ImGuiCond_Always );
+	ImGui::SetNextWindowSizeConstraints( { (float)width, 20 }, { (float)width, 20 } );
 
-	if ( !ImGui::Begin( "Image List", 0, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar ) )
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowBorderSize, 0 );
+
+	const auto& buttonCol = ImGui::GetStyleColorVec4( ImGuiCol_Button );
+	ImGui::PushStyleColor( ImGuiCol_WindowBg, buttonCol );
+
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowMinSize, { 0, 0 } );
+	ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, { 0, 0 } );
+
+	ImGui::Begin( "Image List Button", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration );
+
+	ImGui::SetCursorPos( { 0, 0 } );
+	if ( ImGui::Selectable( "Image List", gImageListShown, 0, { (float)width, 20 } ) )
 	{
-		ImGui::End();
+		gImageListShown = !gImageListShown;
+	}
+
+	ImGui::End();
+
+	ImGui::PopStyleVar();
+	ImGui::PopStyleVar();
+
+	ImGui::PopStyleColor();
+
+	if ( !gImageListShown )
+	{
+		ImGui::PopStyleVar();
 		return;
 	}
 
-	auto region = ImGui::GetContentRegionAvail();
+	ImGui::SetNextWindowPos( { 0, 20 } );
+	// ImGui::SetNextWindowSize( {(float)width, 64} );
+	ImGui::SetNextWindowSizeConstraints( { (float)width, 80 }, { (float)width, height / 2.f } );
 
-	int selected = 0;
+	if ( !ImGui::Begin( "Image List Content", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar ) )
+	{
+		ImGui::End();
+		ImGui::PopStyleVar();
+		return;
+	}
+
+	ImVec2 region   = ImGui::GetContentRegionAvail();
+	ImVec2 pos      = ImGui::GetCursorPos();
+	int    selected = 0;
+
+	if ( ImGui::IsWindowHovered() && scrollWheel != 0 )
+	{
+		ImGui::SetScrollX( ImGui::GetScrollX() - scrollWheel * (region.y + gImagePadding) );
+		Main_ShouldDrawWindow();  // also redraw next frame
+	}
+
 	for ( size_t i = 0; i < gImages.size(); i++ )
 	{
 		ImGui::PushID( i );
 
 		// thanks imgui for not having this use ImWchar
-#if _WIN32
+#ifdef _WIN32
 		std::string path = Plat_FromUnicode( gImages[ i ].c_str() );
 #else
 		std::string path = gImages[ i ].string();
 #endif
 
-		if ( ImGui::Selectable( path.c_str(), gImages[ i ] == gImagePath, 0, { region.y, region.y } ) )
+		ImGui::SetCursorPos( ImVec2( pos.x, pos.y ) );
+
+		if ( ImGui::Selectable( "", gImages[ i ] == gImagePath, 0, { region.y - gImagePadding, region.y - gImagePadding } ) )
 		{
 			selected = i;
 			ImageView_SetImage( gImages[ i ] );
 		}
 
-		// ImGui::BeginTooltip();
-		// ImGui::TextUnformatted( "lol" );
-		// ImGui::EndTooltip();
+		if ( ImGui::IsItemHovered() )
+		{
+			// maybe wait a second before showing a tooltip?
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted( path.c_str() );
+			ImGui::EndTooltip();
+		}
+
+		ImGui::SameLine();
+		ImVec2 tempPos = ImGui::GetCursorPos();
+
+		if ( gImGuiTexture )
+		{
+			ImGui::SetItemAllowOverlap();
+			ImGui::SetCursorPos( ImVec2( pos.x + gImagePadding * 0.5, pos.y + gImagePadding * 0.5 ) );
+
+			ImGui::Image( (ImTextureID)gImGuiTexture, { region.y - gImagePadding * 2, region.y - gImagePadding * 2 } );
+		}
 
 		ImGui::PopID();
 		ImGui::SameLine();
+
+		pos = tempPos;
+		// pos.x += region.y;
 	}
 
-	// uhhh
-	// gDrawData.aHeight = 48;
-	// gDrawData.aWidth  = 48;
-	// gDrawData.aX      = 12;
-	// gDrawData.aY      = 12;
-	// Render_DrawImage( gNewImageData, gDrawData ); 
-	
-	// ImGui::Image();
-
 	ImGui::End();
+	ImGui::PopStyleVar();
 }
 
 

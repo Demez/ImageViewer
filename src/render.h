@@ -7,6 +7,8 @@
 
 struct ImageInfo;
 struct ImDrawData;
+class ivec2;
+typedef void* ImTextureID;
 
 
 enum ImageFilter : unsigned char
@@ -14,7 +16,7 @@ enum ImageFilter : unsigned char
 	ImageFilter_Nearest,
 	ImageFilter_Linear,
 	ImageFilter_Cubic,
-	// ImageFilter_Gaussian,
+	ImageFilter_Gaussian,
 
 	ImageFilter_Count,
 	ImageFilter_VulkanCount = ImageFilter_Linear+1,
@@ -58,10 +60,11 @@ RENDER_DLL_FUNC( void, Render_GetClearColor, int& r, int& g, int& b );
 RENDER_DLL_FUNC( bool, Render_LoadImage, ImageInfo* spInfo, std::vector< char >& srData );
 RENDER_DLL_FUNC( void, Render_FreeImage, ImageInfo* spInfo );
 RENDER_DLL_FUNC( void, Render_DrawImage, ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
+RENDER_DLL_FUNC( void, Render_DownscaleImage, ImageInfo* spInfo, const ivec2& srDestSize );
+RENDER_DLL_FUNC( ImTextureID, Render_AddTextureToImGui, ImageInfo* spInfo );
 
 #ifdef RENDER_DLL
 }
 #endif
 
 #undef RENDER_DLL_FUNC
-

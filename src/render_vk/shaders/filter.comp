@@ -30,7 +30,8 @@ void main()
     // float u = float(gl_GlobalInvocationID.x) / float(push.newSize.x - 1);
     // float v = float(gl_GlobalInvocationID.y) / float(push.newSize.y - 1);
 
-    vec4 outColor = BiCubic( texSamplers[push.texIndex], uv, push.inSize, push.newSize );
+    // vec4 outColor = DoPixelBinning( texSamplers[push.texIndex], uv, push.inSize, push.newSize );
+    vec4 outColor = texture( texSamplers[push.texIndex], uv );
 
     imageStore(img[0], ivec2(gl_GlobalInvocationID.xy), outColor);
 }

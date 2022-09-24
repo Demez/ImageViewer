@@ -36,19 +36,8 @@ void WatchDirectory( fs::path lpDir )
 {
 	DWORD  dwWaitStatus;
 	HANDLE dwChangeHandles[ 2 ];
-	// TCHAR  lpDrive[ 4 ];
-	// TCHAR  lpFile[ _MAX_FNAME ];
-	// TCHAR  lpExt[ _MAX_EXT ];
-
-	fs::path parentPath = lpDir.parent_path();
-
-	// _wsplitpath_s( lpDir, lpDrive, 4, NULL, 0, lpFile, _MAX_FNAME, lpExt, _MAX_EXT );
-
-	// lpDrive[ 2 ]         = (TCHAR)'\\';
-	// lpDrive[ 3 ]         = (TCHAR)'\0';
 
 	// Watch the directory for file creation and deletion.
-
 	dwChangeHandles[ 0 ] = FindFirstChangeNotification(
 	  lpDir.c_str(),                   // directory to watch
 	  FALSE,                           // do not watch subtree
@@ -60,8 +49,9 @@ void WatchDirectory( fs::path lpDir )
 		return;
 	}
 
-	// Watch the subtree for directory creation and deletion.
+	fs::path parentPath  = lpDir.parent_path();
 
+	// Watch the subtree for directory creation and deletion.
 	dwChangeHandles[ 1 ] = FindFirstChangeNotification(
 	  parentPath.c_str(),             // directory to watch
 	  TRUE,                           // watch the subtree
@@ -74,7 +64,6 @@ void WatchDirectory( fs::path lpDir )
 	}
 
 	// Make a final validation check on our handles.
-
 	if ( ( dwChangeHandles[ 0 ] == NULL ) || ( dwChangeHandles[ 1 ] == NULL ) )
 	{
 		printf( "ERROR: Unexpected NULL from FindFirstChangeNotification\n" );
@@ -83,7 +72,6 @@ void WatchDirectory( fs::path lpDir )
 
 	// Change notification is set. Now wait on both notification
 	// handles and refresh accordingly.
-
 	while ( !gScanPathChanged && Plat_WindowOpen() )
 	{
 		// Wait for notification.
@@ -140,7 +128,7 @@ void FolderMonitorFunc()
 			gScanPathChanged = false;
 
 		if ( !gPath.empty() )
-			WatchDirectory( gPath.c_str() );
+			WatchDirectory( gPath );
 
 		Plat_Sleep( 100 );
 	}

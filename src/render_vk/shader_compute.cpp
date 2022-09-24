@@ -33,7 +33,7 @@ std::unordered_map< TextureVK*, TextureVK* > gOutTextures;
 struct ComputerShaderTask_t
 {
 	ImageInfo*    apInfo;
-	ImageDrawInfo aDrawInfo;
+	ivec2         aDestSize;
 	TextureVK*    apTexture;
 	TextureVK*    apStorage;
 };
@@ -52,7 +52,7 @@ struct FilterPush_t
 static std::vector< ComputerShaderTask_t > gTaskQueue;
 
 
-void VK_AddFilterTask( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
+void VK_AddFilterTask( ImageInfo* spInfo, const ivec2& srDestSize )
 {
 	TextureVK* tex = VK_GetTexture( spInfo );
 
@@ -97,7 +97,7 @@ void VK_AddFilterTask( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 	VK_AddImageStorage( tex2 );
 	VK_UpdateImageStorage();  // lazy hack
 
-	gTaskQueue.push_back( { spInfo, srDrawInfo, tex, tex2 } );
+	gTaskQueue.push_back( { spInfo, srDestSize, tex, tex2 } );
 }
 
 
@@ -208,12 +208,13 @@ void VK_RunFilterShader()
 
 		// update push constant
 		FilterPush_t push{};
-		push.aFilterType   = computeTask.aDrawInfo.aFilter;
+		// push.aFilterType   = computeTask.aDrawInfo.aFilter;
+		push.aFilterType   = ImageFilter_Nearest;
 		push.aTexIndex     = computeTask.apTexture->aIndex;
 		push.aSourceSize.x = computeTask.apInfo->aWidth;
 		push.aSourceSize.y = computeTask.apInfo->aHeight;
-		push.aDestSize.x   = computeTask.aDrawInfo.aWidth;
-		push.aDestSize.y   = computeTask.aDrawInfo.aWidth;
+		push.aDestSize.x   = computeTask.aDestSize.x;
+		push.aDestSize.y   = computeTask.aDestSize.y;
 
 		vkCmdPushConstants( VK_GetCommandBuffer(), gPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof( FilterPush_t ), &push );
 
