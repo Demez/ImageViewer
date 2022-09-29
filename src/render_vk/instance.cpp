@@ -260,51 +260,55 @@ uint32_t VK_GetMemoryType( uint32_t sTypeFilter, VkMemoryPropertyFlags sProperti
 }
 
 
-QueueFamilyIndices VK_FindQueueFamilies( VkPhysicalDevice sDevice )
+// TODO: rethink this
+void VK_FindQueueFamilies( VkPhysicalDevice sDevice, u32* spGraphics, u32* spPresent )
 {
-	QueueFamilyIndices indices;
 	uint32_t           queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties( sDevice, &queueFamilyCount, nullptr );
 
 	std::vector< VkQueueFamilyProperties > queueFamilies( queueFamilyCount );
 	vkGetPhysicalDeviceQueueFamilyProperties( sDevice, &queueFamilyCount, queueFamilies.data() );  // Logic to find queue family indices to populate struct with
 	
-	int i = 0;
+	u32 i = 0;
 	for ( const auto& queueFamily : queueFamilies )
 	{
 		if ( queueFamily.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT) )
 		{
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR( sDevice, i, VK_GetSurface(), &presentSupport );
-			if ( presentSupport )
-				indices.aPresentFamily = i;
+			if ( presentSupport && spPresent )
+				*spPresent = i;
 
-			indices.aGraphicsFamily = i;
+			*spGraphics = i;
 		}
 
-		if ( indices.Complete() )
-			break;
+		// if ( indices.Complete() )
+		// 	break;
+		return;
 
 		i++;
 	}
-
-	return indices;
 }
 
 
-SwapChainSupportInfo VK_CheckSwapChainSupport( VkPhysicalDevice sDevice )
+bool VK_ValidQueueFamilies( u32& srPresent, u32& srGraphics )
+{
+	return true;
+}
+
+
+void VK_CheckSwapChainSupport( VkPhysicalDevice sDevice, SwapChainSupportInfo& srSupportInfo )
 {
 	auto                 surf = VK_GetSurface();
-	SwapChainSupportInfo details;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR( sDevice, surf, &details.aCapabilities );
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR( sDevice, surf, &srSupportInfo.aCapabilities );
 
 	uint32_t formatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, NULL );
 
 	if ( formatCount != 0 )
 	{
-		details.aFormats.resize( formatCount );
-		vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, details.aFormats.data() );
+		srSupportInfo.aFormats.resize( formatCount );
+		vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, srSupportInfo.aFormats.data() );
 	}
 
 	uint32_t presentModeCount;
@@ -312,27 +316,28 @@ SwapChainSupportInfo VK_CheckSwapChainSupport( VkPhysicalDevice sDevice )
 
 	if ( presentModeCount != 0 )
 	{
-		details.aPresentModes.resize( presentModeCount );
-		vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, details.aPresentModes.data() );
+		srSupportInfo.aPresentModes.resize( presentModeCount );
+		vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, srSupportInfo.aPresentModes.data() );
 	}
-
-	return details;
 }
 
 
 bool VK_SuitableCard( VkPhysicalDevice sDevice )
 {
-	QueueFamilyIndices indices             = VK_FindQueueFamilies( sDevice );
-	bool               extensionsSupported = VK_CheckDeviceExtensionSupport( sDevice );
-	bool               swapChainAdequate   = false;
+	bool extensionsSupported = VK_CheckDeviceExtensionSupport( sDevice );
+	bool swapChainAdequate   = false;
 
 	if ( extensionsSupported )
 	{
-		SwapChainSupportInfo swapChainSupport = VK_CheckSwapChainSupport( sDevice );
-		swapChainAdequate                     = !swapChainSupport.aFormats.empty() && !swapChainSupport.aPresentModes.empty();
+		SwapChainSupportInfo swapChainSupport;
+		VK_CheckSwapChainSupport( sDevice, swapChainSupport );
+		swapChainAdequate = !swapChainSupport.aFormats.empty() && !swapChainSupport.aPresentModes.empty();
 	}
 
-	return indices.Complete() && extensionsSupported && swapChainAdequate;
+	u32 graphics, present;
+	VK_FindQueueFamilies( sDevice, &graphics, &present );
+
+	return VK_ValidQueueFamilies( present, graphics ) && extensionsSupported && swapChainAdequate;
 }
 
 
@@ -388,12 +393,13 @@ void VK_SetupPhysicalDevice()
 
 void VK_CreateDevice()
 {
-	QueueFamilyIndices                     indices = VK_FindQueueFamilies( gPhysicalDevice );
+	float queuePriority = 1.0f;
+	u32   graphics, present;
+	VK_FindQueueFamilies( gPhysicalDevice, &graphics, &present );
 
+	std::set< u32 > uniqueQueueFamilies = { graphics, present };
 	std::vector< VkDeviceQueueCreateInfo > queueCreateInfos;
-	std::set< uint32_t >                   uniqueQueueFamilies = { (uint32_t)indices.aGraphicsFamily, (uint32_t)indices.aPresentFamily };
 
-	float                                  queuePriority       = 1.0f;
 	for ( uint32_t queueFamily : uniqueQueueFamilies )
 	{
 		VkDeviceQueueCreateInfo queueCreateInfo = {
@@ -406,32 +412,32 @@ void VK_CreateDevice()
 		queueCreateInfos.push_back( queueCreateInfo );
 	}
 
-	VkPhysicalDeviceFeatures deviceFeatures{};
-	deviceFeatures.samplerAnisotropy = VK_TRUE;
-
 	VkPhysicalDeviceDescriptorIndexingFeaturesEXT indexing{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT };
 	indexing.pNext                                    = nullptr;
 	indexing.descriptorBindingPartiallyBound          = VK_TRUE;
 	indexing.runtimeDescriptorArray                   = VK_TRUE;
 	indexing.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-	VkDeviceCreateInfo createInfo                     = {
-							.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-							.pNext                   = &indexing,
-							.flags                   = 0,
-							.queueCreateInfoCount    = (uint32_t)queueCreateInfos.size(),
-							.pQueueCreateInfos       = queueCreateInfos.data(),
-							.enabledLayerCount       = (uint32_t)ARR_SIZE( gpValidationLayers ),
-							.ppEnabledLayerNames     = gpValidationLayers,
-							.enabledExtensionCount   = (uint32_t)ARR_SIZE( gpDeviceExtensions ),
-							.ppEnabledExtensionNames = gpDeviceExtensions,
-							.pEnabledFeatures        = &deviceFeatures,
+	VkPhysicalDeviceFeatures deviceFeatures{};
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+	VkDeviceCreateInfo createInfo    = {
+		   .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		   .pNext                   = &indexing,
+		   .flags                   = 0,
+		   .queueCreateInfoCount    = (u32)queueCreateInfos.size(),
+		   .pQueueCreateInfos       = queueCreateInfos.data(),
+		   .enabledLayerCount       = (u32)ARR_SIZE( gpValidationLayers ),
+		   .ppEnabledLayerNames     = gpValidationLayers,
+		   .enabledExtensionCount   = (u32)ARR_SIZE( gpDeviceExtensions ),
+		   .ppEnabledExtensionNames = gpDeviceExtensions,
+		   .pEnabledFeatures        = &deviceFeatures,
 	};
 
 	VK_CheckResult( vkCreateDevice( gPhysicalDevice, &createInfo, NULL, &gDevice ), "Failed to create logical device!" );
 
-	vkGetDeviceQueue( gDevice, indices.aGraphicsFamily, 0, &gGraphicsQueue );
-	vkGetDeviceQueue( gDevice, indices.aPresentFamily, 0, &gPresentQueue );
+	vkGetDeviceQueue( gDevice, graphics, 0, &gGraphicsQueue );
+	vkGetDeviceQueue( gDevice, present, 0, &gPresentQueue );
 
 #if _DEBUG
 	pfnDebugMarkerSetObjectTag  = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetInstanceProcAddr( VK_GetInstance(), "vkDebugMarkerSetObjectTagEXT" );

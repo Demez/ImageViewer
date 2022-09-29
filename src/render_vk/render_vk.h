@@ -32,16 +32,6 @@ extern PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
 
 
-struct QueueFamilyIndices
-{
-	int  aPresentFamily  = -1;
-	int  aGraphicsFamily = -1;
-
-	// Function that returns true if there is a valid queue family available.
-	bool Complete() { return ( aPresentFamily > -1 ) && ( aGraphicsFamily > -1 ); }
-};
-
-
 struct SwapChainSupportInfo
 {
 	VkSurfaceCapabilitiesKHR          aCapabilities;
@@ -111,8 +101,9 @@ bool                                  VK_CheckValidationLayerSupport();
 VkSampleCountFlagBits                 VK_FindMaxMSAASamples();
 
 uint32_t                              VK_GetMemoryType( uint32_t sTypeFilter, VkMemoryPropertyFlags sProperties );
-QueueFamilyIndices                    VK_FindQueueFamilies( VkPhysicalDevice sDevice );
-SwapChainSupportInfo                  VK_CheckSwapChainSupport( VkPhysicalDevice sDevice );
+void                                  VK_FindQueueFamilies( VkPhysicalDevice sDevice, u32* spGraphics, u32* spPresent );
+bool                                  VK_ValidQueueFamilies( u32& srPresent, u32& srGraphics );
+void                                  VK_CheckSwapChainSupport( VkPhysicalDevice sDevice, SwapChainSupportInfo& srSupportInfo );
 
 // --------------------------------------------------------------------------------------
 // Swapchain

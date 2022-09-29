@@ -66,7 +66,8 @@ VkExtent2D ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& srCapabilities )
 
 void VK_CreateSwapchain()
 {
-	auto swapChainSupport = VK_CheckSwapChainSupport( VK_GetPhysicalDevice() );
+	SwapChainSupportInfo swapChainSupport;
+	VK_CheckSwapChainSupport( VK_GetPhysicalDevice(), swapChainSupport );
 
 	gSurfaceFormat        = ChooseSwapSurfaceFormat( swapChainSupport.aFormats );
 	gPresentMode          = ChooseSwapPresentMode( swapChainSupport.aPresentModes );
@@ -88,10 +89,10 @@ void VK_CreateSwapchain()
 		.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 	};
 
-	QueueFamilyIndices indices              = VK_FindQueueFamilies( VK_GetPhysicalDevice() );
-	uint32_t           queueFamilyIndices[] = { (uint32_t)indices.aGraphicsFamily, (uint32_t)indices.aPresentFamily };
+	uint32_t queueFamilyIndices[ 2 ] = { 0, 0 };
+	VK_FindQueueFamilies( VK_GetPhysicalDevice(), &queueFamilyIndices[ 0 ], &queueFamilyIndices[ 1 ] );
 
-	if ( indices.aGraphicsFamily != indices.aPresentFamily )
+	if ( queueFamilyIndices[ 0 ] != queueFamilyIndices[ 1 ] )
 	{
 		createInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;

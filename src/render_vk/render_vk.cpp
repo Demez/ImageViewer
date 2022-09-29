@@ -146,12 +146,13 @@ VkSampleCountFlagBits VK_GetMSAASamples()
 
 void VK_CreateCommandPool( VkCommandPool& sCmdPool, VkCommandPoolCreateFlags sFlags )
 {
-	QueueFamilyIndices      q = VK_FindQueueFamilies( VK_GetPhysicalDevice() );
+	u32 graphics;
+	VK_FindQueueFamilies( VK_GetPhysicalDevice(), &graphics, nullptr );
 
 	VkCommandPoolCreateInfo aCommandPoolInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	aCommandPoolInfo.pNext            = nullptr;
 	aCommandPoolInfo.flags            = sFlags;
-	aCommandPoolInfo.queueFamilyIndex = q.aGraphicsFamily;
+	aCommandPoolInfo.queueFamilyIndex = graphics;
 
 	VK_CheckResult( vkCreateCommandPool( VK_GetDevice(), &aCommandPoolInfo, nullptr, &sCmdPool ), "Failed to create command pool!" );
 }
@@ -237,6 +238,8 @@ bool VK_CreateImGuiFonts()
 	VK_EndSingleCommand();
 
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+	// TODO: manually free FontData in ImGui fonts, why is it holding onto it and trying to free() it on shutdown?
 
 	return true;
 }
