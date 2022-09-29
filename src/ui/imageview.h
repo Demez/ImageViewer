@@ -16,11 +16,21 @@ enum ImageZoomType
 };
 
 
+enum ImageLoadState : char
+{
+	ImageLoadState_Error = -1,
+	ImageLoadState_NotLoaded,
+	ImageLoadState_Loading,
+	ImageLoadState_Finished,
+};
+
+
 struct ImageLoadThreadData_t
 {
 	fs::path            aPath;
 	ImageInfo*          aInfo = nullptr;  // check to see if this is valid for if it's done loading
 	std::vector< char > aData;
+	ImageLoadState      aState = ImageLoadState_NotLoaded;
 };
 
 
@@ -48,6 +58,10 @@ void            ImageView_FitInView( bool sScaleUp = false );
 double          ImageView_GetZoomLevel();
 void            ImageView_SetZoomLevel( double level );
 void            ImageView_ResetZoom();
+
+void            ImageView_ResetRotation();
+float           ImageView_GetRotation();
+void            ImageView_SetRotation( float rotation );
 
 // ImageZoomType ImageView_GetZoomType();
 // ImageZoomType ImageView_SetZoomType();

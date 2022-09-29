@@ -1,3 +1,24 @@
+﻿#include <memory>
+
+size_t gTotalAllocated = 0;
+
+// replace operator new and delete to log allocations
+void*  operator new( size_t n )
+{
+	size_t* p = (size_t*)malloc( n + sizeof( size_t ) );
+	*p++      = n;
+	gTotalAllocated += n;
+	return p;
+}
+
+void operator delete( void* p ) throw()
+{
+	size_t* sp = (size_t*)p;
+	*--sp;
+	gTotalAllocated -= *sp;
+	free( sp );
+}
+
 #include "main.h"
 #include "util.h"
 #include "args.h"
@@ -11,6 +32,7 @@
 #include <vector>
 
 #include "imgui.h"
+#include "misc/freetype/imgui_freetype.h"
 
 
 // TODO LIST:
@@ -19,6 +41,19 @@
 // - add an image gallery view with different view types
 // - for the image list, be able to hover over the image and get a larger preview
 // 
+
+// temp
+#define UN_SUNGLASSES "\U0001F60E"
+#define UN_POINT_UP "\u261D"
+
+std::filesystem::path      gFontPath      = _T("CascadiaMono.ttf");
+std::filesystem::path      gFontEmojiPath = _T("seguiemj.ttf");
+
+ImFont*                    gpFont         = nullptr;
+ImFont*                    gpFontEmoji    = nullptr;
+
+static ImFontConfig        gFontConfig;
+static ImFontConfig        gFontEmojiConfig;
 
 
 Module gRenderer = 0;
@@ -41,6 +76,9 @@ Render_DrawImage_t         Render_DrawImage         = 0;
 Render_DownscaleImage_t    Render_DownscaleImage    = 0;
 Render_AddTextureToImGui_t Render_AddTextureToImGui = 0;
 
+Render_AddFont_t           Render_AddFont           = 0;
+Render_BuildFonts_t        Render_BuildFonts        = 0;
+
 
 #define LOAD_RENDER_FUNC( name ) \
 	if ( !(name = (##name##_t)Plat_LoadFunc( gRenderer, #name )) ) \
@@ -52,11 +90,9 @@ Render_AddTextureToImGui_t Render_AddTextureToImGui = 0;
 
 bool LoadRenderer()
 {
-	// printf( "Failed to Init Renderer!!\n" );
-
-	if ( Args_Has( _T("-vk") ) )
+	if ( Args_Has( _T("-sdl") ) )
 	{
-		if ( !( gRenderer = Plat_LoadLibrary( _T("render_vk") EXT_DLL ) ) )
+		if ( !( gRenderer = Plat_LoadLibrary( _T("render_sdl") EXT_DLL ) ) )
 		{
 			printf( "Failed to Load Renderer!!\n" );
 			return false;
@@ -64,7 +100,7 @@ bool LoadRenderer()
 	}
 	else
 	{
-		if ( !( gRenderer = Plat_LoadLibrary( _T("render_sdl") EXT_DLL ) ) )
+		if ( !( gRenderer = Plat_LoadLibrary( _T("render_vk") EXT_DLL ) ) )
 		{
 			printf( "Failed to Load Renderer!!\n" );
 			return false;
@@ -87,6 +123,9 @@ bool LoadRenderer()
 	LOAD_RENDER_FUNC( Render_DrawImage );
 	LOAD_RENDER_FUNC( Render_DownscaleImage );
 	LOAD_RENDER_FUNC( Render_AddTextureToImGui );
+
+	LOAD_RENDER_FUNC( Render_AddFont );
+	LOAD_RENDER_FUNC( Render_BuildFonts );
 
 	return true;
 }
@@ -169,6 +208,7 @@ bool gShouldDraw              = true;
 bool gCanDraw                 = false;
 bool gSettingsOpen            = false;
 bool gFilePropertiesSupported = true;
+static bool gShowImGuiDemo           = false;
 
 
 void Main_ShouldDrawWindow( bool draw )
@@ -199,14 +239,14 @@ void Main_VoidContextMenu()
 	{
 	}
 
-	if ( ImGui::MenuItem( "Undo", nullptr, false, Plat_CanUndo() ) )
+	if ( ImGui::MenuItem( "Undo", nullptr, false, UndoSys_CanUndo() ) )
 	{
-		Plat_Undo();
+		UndoSys_Undo();
 	}
 
-	if ( ImGui::MenuItem( "Redo", nullptr, false, Plat_CanRedo() ) )
+	if ( ImGui::MenuItem( "Redo", nullptr, false, UndoSys_CanRedo() ) )
 	{
-		Plat_Redo();
+		UndoSys_Redo();
 	}
 
 	if ( ImGui::MenuItem( "Delete", nullptr, false, ImageView_HasImage() ) )
@@ -268,6 +308,11 @@ void Main_VoidContextMenu()
 	{
 	}
 
+	if ( ImGui::MenuItem( "Show ImGui Demo", nullptr, gShowImGuiDemo ) )
+	{
+		gShowImGuiDemo = !gShowImGuiDemo;
+	}
+
 	ImGui::EndPopup();
 }
 
@@ -286,6 +331,19 @@ void Main_WindowDraw()
 	// UI Building
 
 	ImGui::NewFrame();
+
+	// if ( gpFont )
+	//  	ImGui::PushFont( gpFont );
+
+	auto& io = ImGui::GetIO();
+
+	// TEMP
+	// ImGui::Text( "Unicode Test: —😎—◘☝—" );
+	//ImGui::Text( "Unicode Test: —" UN_SUNGLASSES "â€”â€”◘" UN_POINT_UP "—" );
+	ImGui::Text( "Unicode Test: â€”ðŸ˜Žâ€”â—˜â˜â€”" );
+
+	static char bufTemp[ 256 ] = { '\0' };
+	ImGui::InputText( "test: ", bufTemp, 256 );
 
 	ImageView_Draw();
 	ImageList_Draw();
@@ -317,15 +375,24 @@ void Main_WindowDraw()
 	// if ( gSettingsOpen )
 	// 	Settings_Draw();
 
-	// Temp
-	// ImGui::ShowDemoWindow();
+	if ( gShowImGuiDemo )
+		ImGui::ShowDemoWindow();
+
+	// if ( gpFont )
+	//  	ImGui::PopFont();
 
 	// ----------------------------------------------------------------------
 	// Rendering
 
+	if ( !Plat_WindowOpen() )
+	{ 
+		// wtf
+		return;
+	}
+
 	Render_Present();
 
-	gCanDraw = true;
+	gCanDraw = Plat_WindowOpen();
 }
 
 
@@ -355,6 +422,45 @@ int entry()
 		return 1;
 	}
 
+	{
+		int width, height;
+		Plat_GetWindowSize( width, height );
+		Render_SetResolution( width, height );
+	}
+
+	std::filesystem::path entryPath = Args_Get( 0 );
+	entryPath = entryPath.parent_path();
+
+	// gFontConfig.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor | ImGuiFreeTypeBuilderFlags_Bitmap;
+	gFontConfig.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_Bitmap;
+	// gFontConfig.OversampleH = gFontConfig.OversampleV = 6;
+	gFontConfig.GlyphOffset.y = -2;
+	// gFontConfig.MergeMode = true;
+
+	gpFont = Render_AddFont( entryPath / gFontPath, 13, &gFontConfig );
+
+	gFontEmojiConfig.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor | ImGuiFreeTypeBuilderFlags_Bitmap;
+	gFontEmojiConfig.MergeMode = true;
+	
+	gpFontEmoji = Render_AddFont( entryPath / gFontEmojiPath, 13, &gFontEmojiConfig );
+
+	auto& io = ImGui::GetIO();
+
+	if ( Render_BuildFonts() )
+	{
+		if ( gpFont )
+		{
+			io.FontDefault = gpFont;
+		}
+	}
+	else
+	{
+		printf( "Failed to build fonts!\n" );
+		ImGui::DestroyContext();
+		Plat_Shutdown();
+		return 1;
+	}
+
 	if ( Args_Count() > 1 )
 	{
 		// still kinda shit, hmm
@@ -372,8 +478,6 @@ int entry()
 	
 	gCanDraw = Plat_WindowOpen();
 	gRunning = gCanDraw;
-
-	auto& io = ImGui::GetIO();
 
 	while ( gCanDraw )
 	{

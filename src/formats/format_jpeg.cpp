@@ -19,16 +19,15 @@ public:
     bool CheckExt( std::wstring_view ext ) override
     {
 		return ext == L"jpg" || ext == L"jpeg";
-    }
+	}
+
+	bool CheckHeader( const fs::path& path ) override
+	{
+		return true;
+	}
 
 	ImageInfo* LoadImage( const fs::path& path, std::vector< char >& srData ) override
 	{
-		if ( !fs_is_file( path.c_str() ) )
-		{
-			fwprintf( stderr, L"[FormatJpeg] File does not exist: %s\n", path.c_str() );
-			return nullptr;
-		}
-
 		tjhandle tjpg = tjInitDecompress();
 
         if ( tjpg == nullptr )

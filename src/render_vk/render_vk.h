@@ -9,7 +9,7 @@
 
 struct ImageInfo;
 struct ImageDrawInfo;
-enum ImageFilter : unsigned char;
+enum ImageFilter;  // : unsigned char;
 
 
 #define VK_COLOR_RESOLVE 1
@@ -178,7 +178,11 @@ void                                  VK_DestroySemaphores();
 
 void                                  VK_AllocateCommands();
 void                                  VK_FreeCommands();
+
+VkCommandBuffer                       VK_BeginSingleCommand();
+void                                  VK_EndSingleCommand();
 void                                  VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc );
+
 void                                  VK_RecordCommands();
 void                                  VK_Present();
 

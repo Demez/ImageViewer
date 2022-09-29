@@ -89,10 +89,10 @@ void ImageList_Update()
 	}
 
 	// TEMP !!!!
-	if ( gNewImageData == nullptr )
-	{
-		ImageList_LoadThumbnail( gNewImagePath );
-	}
+	// if ( gNewImageData == nullptr )
+	// {
+	// 	ImageList_LoadThumbnail( gNewImagePath );
+	// }
 
 	// check folder monitor for if a change happened
 	if ( !Plat_FolderMonitorChanged() )
@@ -180,7 +180,7 @@ void ImageList_Draw()
 
 		// thanks imgui for not having this use ImWchar
 #ifdef _WIN32
-		std::string path = Plat_FromUnicode( gImages[ i ].c_str() );
+		std::string path = Plat_ToMultiByte( gImages[ i ].c_str() );
 #else
 		std::string path = gImages[ i ].string();
 #endif

@@ -6,6 +6,8 @@ set( SRC_FILES
   src/main.cpp
   src/folder_info.cpp
   src/folder_info.h
+  # src/thumbnail.cpp
+  # src/thumbnail.h
   src/log.cpp
   src/log.h
   src/util.cpp
@@ -14,6 +16,7 @@ set( SRC_FILES
   src/args.h
   src/platform.h
   src/render.h
+  src/undo_system.cpp
 
   # UI
   src/ui/imagelist.cpp
@@ -40,10 +43,14 @@ if( MSVC )
 		${CMAKE_CURRENT_LIST_DIR}/src/win/folder_monitor.cpp
 		${CMAKE_CURRENT_LIST_DIR}/src/win/platform_win32.cpp
 		${CMAKE_CURRENT_LIST_DIR}/src/win/platform_win32.h
-		${CMAKE_CURRENT_LIST_DIR}/src/win/undo_manager.cpp
 	)
 else()
 	set( PLAT_FILES
+		${CMAKE_CURRENT_LIST_DIR}/src/linux/drag_drop.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/linux/folder_monitor.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/linux/platform_x11.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/linux/platform_linux.cpp
+		${CMAKE_CURRENT_LIST_DIR}/src/linux/platform_linux.h
 	)
 endif()
 
@@ -78,6 +85,7 @@ set_target_properties(
 
 target_link_libraries(
 	ImageViewer
+	PRIVATE
 	spng
 	ImGui
 	turbojpeg-static
@@ -91,7 +99,7 @@ target_link_libraries(
 )
 
 if( MSVC )
-	target_link_libraries( ImageViewer Shlwapi )
+	target_link_libraries( ImageViewer PRIVATE Shlwapi )
 endif()
 
 if ( ${CMAKE_BUILD_TYPE} NOT STREQUAL '' )

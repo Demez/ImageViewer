@@ -26,6 +26,9 @@ typedef void* Module;
   // platform specific unicode character type
   using uchar = wchar_t;
 
+  #define ustring      wstring
+  #define ustring_view wstring_view
+
   #define USTRING      wstring
   #define USTRING_VIEW wstring_view
 
@@ -37,6 +40,9 @@ typedef void* Module;
 
   // platform specific unicode character type
   using uchar = char;
+
+  #define ustring      string
+  #define ustring_view string_view
 
   #define USTRING      string
   #define USTRING_VIEW string_view
@@ -111,22 +117,20 @@ void         Plat_Sleep( float ms );
 // Shell Operations
 void         Plat_BrowseToFile( const std::filesystem::path& file );
 void         Plat_OpenFileProperties( const std::filesystem::path& file );
-bool         Plat_DeleteFile( const std::filesystem::path& file, bool showConfirm = true );
-
-// Undo/Redo support (MOVE TO MAIN CODE, THIS IS NOT PLATFORM SPECIFIC THE WAY I DO THIS HERE)
-bool         Plat_CanUndo();
-bool         Plat_CanRedo();
-bool         Plat_Undo();
-bool         Plat_Redo();
+bool         Plat_DeleteFile( const std::filesystem::path& file, bool showConfirm = true, bool addToUndo = true );
+bool         Plat_RestoreFile( const std::filesystem::path& file );
 
 int          Plat_Stat( const std::filesystem::path& file, struct stat* info );
 
-std::USTRING Plat_ToUnicode( const char* spStr );
-int          Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize );
+std::wstring Plat_ToWideChar( const char* spStr );
+int          Plat_ToWideChar( const char* spStr, wchar_t* spDst, int sSize );
 
-std::string  Plat_FromUnicode( const uchar* spStr );
+std::string  Plat_ToMultiByte( const wchar_t* spStr );
+int          Plat_ToMultiByte( const wchar_t* spStr, char* spDst, int sSize );
+int          Plat_ToMultiByte( const std::wstring& srStr, std::string& srDst );
 
-std::USTRING Plat_GetModuleName();
+// std::USTRING Plat_GetModuleName();
+std::ustring Plat_GetModuleName();
 
 Module       Plat_LoadLibrary( const uchar* path );
 void         Plat_CloseLibrary( Module mod );

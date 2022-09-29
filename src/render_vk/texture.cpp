@@ -135,7 +135,7 @@ VkFormat VK_GetFormat( PixelFormat pixFmt )
 // NOTE: may need to change this for texture filtering later, oh boy
 VkSampler VK_GetSampler( ImageFilter filter )
 {
-	if ( filter >= ImageFilter_VulkanCount )
+	if ( filter >= ImageFilter_VulkanCount || filter < 0 )
 	{
 		filter = ImageFilter_Nearest;
 	}
@@ -183,6 +183,7 @@ TextureVK* VK_NewTexture()
 {
 	TextureVK* tex = gTextures.emplace_back( new TextureVK );
 	tex->aIndex    = gTextures.size() - 1;
+	tex->aFilter   = ImageFilter_Nearest;
 	return tex;
 }
 
@@ -192,6 +193,7 @@ TextureVK* VK_CreateTexture( const ivec2& srSize, VkFormat sFormat )  // , VkIma
 	TextureVK* tex = gTextures.emplace_back( new TextureVK );
 	tex->aIndex    = gTextures.size() - 1;
 	tex->aSize     = srSize;
+	tex->aFilter   = ImageFilter_Nearest;
 
 	VkImageCreateInfo createInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	createInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -247,6 +249,8 @@ TextureVK* VK_CreateTexture( const ivec2& srSize, VkFormat sFormat )  // , VkIma
 
 TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& sData )
 {
+	auto startTime = std::chrono::high_resolution_clock::now();
+
 	auto find = gImageMap.find( spImageInfo );
 
 	// Image is already loaded
@@ -267,6 +271,7 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 	tex->aIndex           = gTextures.size() - 1;
 	tex->aSize.x          = spImageInfo->aWidth;
 	tex->aSize.y          = spImageInfo->aHeight;
+	tex->aFilter          = ImageFilter_Nearest;
 
 	VK_CreateBuffer( stagingBuffer, stagingMemory, sData.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
@@ -350,6 +355,10 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 	gImageMap[ spImageInfo ] = tex;
 
 	VK_UpdateImageSets();
+
+	auto  currentTime = std::chrono::high_resolution_clock::now();
+	float time        = std::chrono::duration< float, std::chrono::seconds::period >( currentTime - startTime ).count();
+	printf( "VK_CreateTexture(): Time taken to create texture: %.6f\n", time );
 
 	return tex;
 }

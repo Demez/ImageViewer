@@ -42,15 +42,16 @@ void LoadImageFunc()
 		while ( gLoadThreadQueue.size() )
 		{
 			auto queueItem = gLoadThreadQueue[ 0 ];
+			queueItem->aState = ImageLoadState_Loading;
 
 			if ( !queueItem->aInfo && !queueItem->aPath.empty() )
 			{
 				queueItem->aPath = fs_clean_path( queueItem->aPath );
 
-				if ( !( queueItem->aInfo = ImageLoader_LoadImage( queueItem->aPath, queueItem->aData ) ) )
-				{
-					// gNewImagePath.clear();
-				}
+				if ( queueItem->aInfo = ImageLoader_LoadImage( queueItem->aPath, queueItem->aData ) )
+					queueItem->aState = ImageLoadState_Finished;
+				else
+					queueItem->aState = ImageLoadState_Error;
 
 				// NOTE: this is possible in Vulkan, need a different VkQueue i think, probably not SDL2 though
 				// gImageHandle = Render_LoadImage( queueItem->aInfo, queueItem->aData );
@@ -243,10 +244,26 @@ void ImageView_LoadImage()
 
 void ImageView_Update()
 {
-	if ( gImageDataQueue.size() && gImageDataQueue[ 0 ]->aInfo )
+	if ( gImageDataQueue.size() )
 	{
-		// an image being loaded in the background is now ready to be finished loading on the main thread
-		ImageView_LoadImage();
+		switch ( gImageDataQueue[ 0 ]->aState )
+		{
+			case ImageLoadState_Error:
+			{
+				auto imageData = gImageDataQueue[ 0 ];
+				vec_remove( gImageDataQueue, imageData );
+				delete imageData;
+				break;
+			}
+
+			case ImageLoadState_NotLoaded:
+			case ImageLoadState_Loading:
+				break;
+
+			case ImageLoadState_Finished:
+				// an image being loaded in the background is now ready to be finished loading on the main thread
+				ImageView_LoadImage();
+		}
 	}
 
 	if ( Plat_IsKeyDown( K_DELETE ) )
@@ -295,6 +312,27 @@ constexpr void operator+=( ImageFilter& filter, unsigned char other )
 }
 
 
+std::string GetFilterName( ImageFilter filter )
+{
+	switch ( filter )
+	{
+		default:
+		case ImageFilter_Nearest:
+			return "Nearest";
+
+		case ImageFilter_Linear:
+			return "Linear";
+
+		case ImageFilter_Cubic:
+			return "Cubic";
+
+		case ImageFilter_Gaussian:
+			// filter += "Gaussian";
+			return "Cubic (Compute)";
+	}
+}
+
+
 void ImageView_Draw()
 {
 	static bool wasLoading = false;
@@ -305,9 +343,10 @@ void ImageView_Draw()
 			Main_ShouldDrawWindow();
 
 		wasLoading = true;
-		// thanks imgui for not having this use ImWchar
+
 #if _WIN32
-		std::string path = Plat_FromUnicode( gImageDataQueue[ 0 ]->aPath.c_str() );
+		std::string path;
+		Plat_ToMultiByte( gImageDataQueue[ 0 ]->aPath.wstring(), path );
 #else
 		std::string path = gImageDataQueue[ 0 ]->aPath.string();
 #endif
@@ -356,44 +395,60 @@ void ImageView_Draw()
 	if ( !gpImageInfo )
 		return;
 
-	if ( ImGui::Button( "Switch Filter" ) )
+	if ( ImGui::Begin( "Image View Debug" ) )
 	{
-		gDrawInfo.aFilter += 1;
+		// std::u8string what = gImagePath.u8string();
+		// what.resize( gImagePath.u8string
 
-		if ( gDrawInfo.aFilter == ImageFilter_Gaussian )
-			Render_DownscaleImage( gpImageInfo, { gDrawInfo.aWidth, gDrawInfo.aHeight } );
+		// char* test = utf8_decode( gImagePath.c_str(),);
 
-		else if ( gDrawInfo.aFilter == ImageFilter_Count )
-			gDrawInfo.aFilter = ImageFilter_Nearest;
+		ImGui::Text( "Image: %s", what.c_str() );
 
-		ImageView_SetImageFilter( gDrawInfo.aFilter );
+		ImGui::Separator();
+
+		if ( ImGui::Button( "Switch Downscale Filter" ) )
+		{
+			gZoomOutFilter += 1;
+
+			if ( gZoomOutFilter == ImageFilter_Gaussian )
+				Render_DownscaleImage( gpImageInfo, { gDrawInfo.aWidth, gDrawInfo.aHeight } );
+
+			else if ( gZoomOutFilter == ImageFilter_Count )
+				gZoomOutFilter = ImageFilter_Nearest;
+		}
+
+		std::string downFilter = "Downscale Filter: " + GetFilterName( gZoomOutFilter );
+		ImGui::Text( downFilter.c_str() );
+
+		if ( ImGui::Button( "Switch Upscale Filter" ) )
+		{
+			gZoomInFilter += 1;
+
+			if ( gZoomInFilter == ImageFilter_Count )
+				gZoomInFilter = ImageFilter_Nearest;
+		}
+
+		std::string upFilter = "Upscale Filter: " + GetFilterName( gZoomInFilter );
+
+		ImGui::Text( upFilter.c_str() );
+
+		ImGui::Separator();
+		// ImGui::Spacing();
+
+		gDrawInfo.aFilter     = ImageView_GetImageFilter();
+		std::string curFilter = "Current Filter: " + GetFilterName( gDrawInfo.aFilter );
+		ImGui::Text( curFilter.c_str() );
+
+		ImGui::Separator();
+
+		ImGui::SliderAngle( "test", &gDrawInfo.aRotation, 0, 360 );
+	}
+	else
+	{
+		gDrawInfo.aFilter = ImageView_GetImageFilter();
 	}
 
-	gDrawInfo.aFilter = ImageView_GetImageFilter();
-
-	std::string filter = "Filter: ";
-
-	switch ( gDrawInfo.aFilter )
-	{
-		case ImageFilter_Nearest:
-			filter += "Nearest";
-			break;
-
-		case ImageFilter_Linear:
-			filter += "Linear";
-			break;
-
-		case ImageFilter_Cubic:
-			filter += "Cubic";
-			break;
-
-		case ImageFilter_Gaussian:
-			// filter += "Gaussian";
-			filter += "Cubic (Compute)";
-			break;
-	}
-
-	ImGui::Text( filter.c_str() );
+	ImGui::End();
 
 	Render_DrawImage( gpImageInfo, gDrawInfo );
 }
@@ -532,6 +587,24 @@ void ImageView_FitInView( bool sScaleUp )
 
 	gDrawInfo.aX = ( width - gDrawInfo.aWidth ) / 2;
 	gDrawInfo.aY = ( height - gDrawInfo.aHeight ) / 2;
+}
+
+
+void ImageView_ResetRotation()
+{
+	gDrawInfo.aRotation = 0.f;
+}
+
+
+float ImageView_GetRotation()
+{
+	return gDrawInfo.aRotation;
+}
+
+
+void ImageView_SetRotation( float rotation )
+{
+	gDrawInfo.aRotation = rotation;
 }
 
 

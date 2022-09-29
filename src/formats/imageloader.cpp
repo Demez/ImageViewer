@@ -1,6 +1,8 @@
 #include "imageloader.h"
 #include "../util.h"
 
+#include <chrono>
+
 
 // TODO: maybe create some kind of plugin system for image loaders?
 // and create some sort of image loader priority system that users can reorder if custom plugins are used
@@ -59,8 +61,13 @@ ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& s
 
 	for ( auto format: gFormats )
 	{
-		if ( !format->CheckExt( fileExt.c_str() ) )
+		// if ( !format->CheckExt( fileExt.c_str() ) )
+		// 	continue;
+
+		if ( !format->CheckHeader( srPath ) )
 			continue;
+
+		auto startTime = std::chrono::high_resolution_clock::now();
 
 		if ( auto image = format->LoadImage( srPath, srData ) )
 		{
@@ -73,6 +80,10 @@ ImageInfo* ImageLoader_LoadImage( const fs::path& srPath, std::vector< char >& s
 				// image->aFormat = FMT_BGRA8;
 			}
 
+			auto  currentTime = std::chrono::high_resolution_clock::now();
+			float time = std::chrono::duration< float, std::chrono::seconds::period >( currentTime - startTime ).count();
+
+			printf( "ImageLoader_LoadImage(): Time taken to load image: %.6f\n", time );
 			return image;
 		}
 	}

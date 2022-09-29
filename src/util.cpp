@@ -241,6 +241,7 @@ bool fs_read_close( DirHandle_t dirh )
 #endif
 }
 
+
 std::vector< char > fs_read_file( const fs::path& srFilePath )
 {
 	/* Open file.  */
@@ -257,6 +258,49 @@ std::vector< char > fs_read_file( const fs::path& srFilePath )
 
 	/* Read contents.  */
 	file.read( buffer.data(), fileSize );
+	file.close();
+
+	return buffer;
+}
+
+
+bool fs_read_file( const fs::path& srFilePath, std::vector< char >& srData )
+{
+	/* Open file.  */
+	std::ifstream file( srFilePath.wstring(), std::ios::ate | std::ios::binary );
+	if ( !file.is_open() )
+	{
+		fwprintf( stderr, L"Failed to open file: %s", srFilePath.c_str() );
+		return false;
+	}
+
+	int fileSize = (int)file.tellg();
+	srData.resize( fileSize );
+	file.seekg( 0 );
+
+	/* Read contents.  */
+	file.read( srData.data(), fileSize );
+	file.close();
+
+	return true;
+}
+
+
+std::vector< char > fs_read_bytes( const fs::path& srFilePath, int bytes )
+{
+	/* Open file.  */
+	std::ifstream file( srFilePath.wstring(), std::ios::ate | std::ios::binary );
+	if ( !file.is_open() )
+	{
+		fwprintf( stderr, L"Failed to open file: %s", srFilePath.c_str() );
+		return {};
+	}
+
+	std::vector< char > buffer( bytes );
+
+	/* Read contents.  */
+	file.seekg( 0 );
+	file.read( buffer.data(), bytes );
 	file.close();
 
 	return buffer;

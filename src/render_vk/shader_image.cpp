@@ -27,14 +27,16 @@ struct ImgVert_t
 struct ImgPush_t
 {
 	vec2        aScale;
+	vec2        aTranslate;
+
 	vec2        aImageScale;
 	vec2        aBicubicScale;
 	vec2        aWindowScale;
-	vec2        aTranslate;
 	vec2        aTextureSize;
 	vec2        aDrawSize;
 	int         aTexIndex;
 	ImageFilter aFilterType;
+	float       aRotation;
 };
 
 
@@ -197,6 +199,7 @@ void VK_DrawImageShader()
 		// );
 
 		push.aTexIndex = shaderDraw.apTexture->aIndex;
+		push.aRotation = shaderDraw.aDrawInfo.aRotation;
 
 		// maybe check if the compute shader has an output for this? idk
 

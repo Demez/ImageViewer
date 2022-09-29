@@ -5,8 +5,8 @@
 
 #include "render_vk.h"
 
-#include "imgui_impl_win32.h"
 #include "imgui_impl_vulkan.h"
+#include "misc/freetype/imgui_freetype.h"
 
 #include <unordered_map>
 
@@ -22,6 +22,8 @@ static VkCommandPool gSingleTime;
 static VkCommandPool gPrimary;
 
 static std::unordered_map< ImageInfo*, VkDescriptorSet > gImGuiTextures;
+
+static std::vector< std::vector< char > >                gFontData;
 
 
 char const* VKString( VkResult sResult )
@@ -222,6 +224,24 @@ void VK_DestroyBuffer( VkBuffer& srBuffer, VkDeviceMemory& srBufferMem )
 }
 
 
+bool VK_CreateImGuiFonts()
+{
+	VkCommandBuffer c = VK_BeginSingleCommand();
+
+	if ( !ImGui_ImplVulkan_CreateFontsTexture( c ) )
+	{
+		printf( "VK_CreateImGuiFonts(): Failed to create ImGui Fonts Texture!\n" );
+		return false;
+	}
+
+	VK_EndSingleCommand();
+
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+	return true;
+}
+
+
 bool VK_InitImGui()
 {
 	ImGui_ImplVulkan_InitInfo init_info{};
@@ -238,10 +258,7 @@ bool VK_InitImGui()
 	if ( !ImGui_ImplVulkan_Init( &init_info, VK_GetRenderPass() ) )
 		return false;
 
-	VK_SingleCommand( []( VkCommandBuffer c ) { ImGui_ImplVulkan_CreateFontsTexture( c ); } );
-
-	ImGui_ImplVulkan_DestroyFontUploadObjects();
-
+	// return VK_CreateImGuiFonts();
 	return true;
 }
 
@@ -439,5 +456,37 @@ ImTextureID Render_AddTextureToImGui( ImageInfo* spInfo )
 
 	printf( "Render_AddTextureToImGui(): Failed to add texture to ImGui\n" );
 	return nullptr;
+}
+
+
+static ImWchar ranges[] = { 0x1, 0x1FFFF, 0 };
+
+ImFont* Render_AddFont( const std::filesystem::path& srPath, float sSizePixels, const ImFontConfig* spFontConfig )
+{
+	if ( !fs_is_file( srPath.c_str() ) )
+	{
+		wprintf( L"Render_BuildFont(): Font does not exist: %ws\n", srPath.c_str() );
+		return nullptr;
+	}
+
+	auto& fileData = gFontData.emplace_back();
+
+	if ( !fs_read_file( srPath, fileData ) )
+	{
+		wprintf( L"Render_BuildFont(): Font is empty file: %ws\n", srPath.c_str() );
+		gFontData.pop_back();
+		return nullptr;
+	}
+
+	auto& io = ImGui::GetIO();
+	return io.Fonts->AddFontFromMemoryTTF( fileData.data(), fileData.size(), sSizePixels, spFontConfig, ranges );
+}
+
+
+bool Render_BuildFonts()
+{
+	bool ret = VK_CreateImGuiFonts();
+	gFontData.clear();
+	return ret;
 }
 

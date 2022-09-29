@@ -1,14 +1,16 @@
 
 layout(push_constant) uniform Push {
-    vec2 scale;
-    vec2 imageScale;
-    vec2 bicubicScale;
-    vec2 viewport;
-    vec2 translate;
-	vec2 textureSize;
-	vec2 drawSize;
-	int  texIndex;
-    int  filterType;
+    vec2  scale;
+    vec2  translate;
+
+    vec2  imageScale;
+    vec2  bicubicScale;
+    vec2  viewport;
+	vec2  textureSize;
+	vec2  drawSize;
+	int   texIndex;
+    int   filterType;
+    float rotation;
 } push;
 
 #define ImageFilter_Nearest  0

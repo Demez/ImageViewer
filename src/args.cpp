@@ -49,6 +49,7 @@ DLL_EXPORT int Args_Count()
 }
 
 
+// TODO: get rid of this returning temporary fallback thing
 DLL_EXPORT const std::USTRING_VIEW& Args_Get( int index, const std::USTRING& fallback )
 {
 	if ( index == -1 || index > gArgs.size() )

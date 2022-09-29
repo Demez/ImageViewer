@@ -43,7 +43,7 @@ class IImageFormat
 public:
 	virtual ImageInfo* LoadImage( const fs::path& path, std::vector< char >& srData ) = 0;
 	virtual bool       CheckExt( std::wstring_view ext )   = 0;
-	// virtual bool       CheckHeader( const fs::path& path )   = 0;
+	virtual bool       CheckHeader( const fs::path& path )   = 0;
 };
 
 

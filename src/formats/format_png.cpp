@@ -22,6 +22,46 @@ public:
         return ext == aExt;
     }
 
+	bool CheckHeader( const fs::path& path ) override
+	{
+#if 0
+		spng_ctx* ctx = spng_ctx_new( 0 );
+		if ( !ctx )
+		{
+			fprintf( stderr, "[FormatPNG] Failed to allocate memory for png context.\n" );
+			return false;
+		}
+
+		FILE* pFile = _wfopen( path.c_str(), L"rb" );
+		if ( !pFile )
+			return false;
+
+		struct spng_ihdr ihdr;
+		int              err = 0;
+
+		err                  = spng_set_png_file( ctx, pFile );
+		if ( err != 0 )
+		{
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return false;
+		}
+
+		err = spng_get_ihdr( ctx, &ihdr );
+		if ( err != 0 )
+		{
+			spng_ctx_free( ctx );
+			fclose( pFile );
+			return false;
+		}
+
+		spng_ctx_free( ctx );
+		fclose( pFile );
+#endif
+
+		return true;
+	}
+
 	ImageInfo* LoadImage( const fs::path& path, std::vector< char >& srData ) override
 	{
         spng_ctx *ctx = spng_ctx_new( 0 );

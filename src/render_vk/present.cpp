@@ -137,12 +137,7 @@ void VK_FreeCommands()
 }
 
 
-// TODO: maybe split into these functions?
-// VK_BeginCommand( cmdBuffer, oneTime = true )
-// (your code here for command buffer)
-// VK_EndCommand( cmdBuffer )
-// VK_QueueCommand( queue ) - can be ran later maybe?
-void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
+VkCommandBuffer VK_BeginSingleCommand()
 {
 	VkCommandBufferBeginInfo aCommandBufferBeginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	aCommandBufferBeginInfo.pNext = nullptr;
@@ -150,8 +145,12 @@ void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
 
 	VK_CheckResult( vkBeginCommandBuffer( gSingleCommandBuffer, &aCommandBufferBeginInfo ), "Failed to begin command buffer!" );
 
-	sFunc( gSingleCommandBuffer );
+	return gSingleCommandBuffer;
+}
 
+
+void VK_EndSingleCommand()
+{
 	VK_CheckResult( vkEndCommandBuffer( gSingleCommandBuffer ), "Failed to end command buffer!" );
 
 	VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -163,6 +162,18 @@ void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
 
 	VK_ResetCommandPool( VK_GetSingleTimeCommandPool() );
 }
+
+
+// legacy?
+void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
+{
+	VK_BeginSingleCommand();
+	sFunc( gSingleCommandBuffer );
+	VK_EndSingleCommand();
+}
+
+
+// alternate version of above
 
 
 void VK_RecordCommands()

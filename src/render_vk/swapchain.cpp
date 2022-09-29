@@ -51,6 +51,7 @@ VkPresentModeKHR ChooseSwapPresentMode( const std::vector< VkPresentModeKHR >& s
 
 VkExtent2D ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& srCapabilities )
 {
+	// TODO: probably use gWidth and gHeight instead, not sure how this would behave on linux lol
 	if ( srCapabilities.currentExtent.width != UINT32_MAX )
 		return srCapabilities.currentExtent;
 

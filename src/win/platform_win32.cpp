@@ -20,19 +20,30 @@
 #include "platform_win32.h"
 
 
-HWND gHWND = nullptr;
+#define SHCNF_ACCEPT_INTERRUPTS     0x0001
+#define SHCNF_ACCEPT_NON_INTERRUPTS 0x0002
+
+#define WM_SHELLNOTIFY              ( WM_USER + 5 )
+#define WM_SHELLNOTIFYRBINDIR       ( WM_USER + 6 )
+
+
+HWND          gHWND = nullptr;
 
 // Per Frame Events
-int  gMouseDelta[2];
-int  gMousePos[2];
-int  gMousePosPrev[2];
-char gMouseScroll;
+int           gMouseDelta[ 2 ];
+int           gMousePos[ 2 ];
+int           gMousePosPrev[ 2 ];
+char          gMouseScroll;
 
-bool gWindowShown;
-bool gWindowFocused;
+bool          gWindowShown;
+bool          gWindowFocused;
 
-int  gMinWidth             = 320;
-int  gMinHeight            = 240;
+int           gMinWidth             = 320;
+int           gMinHeight            = 240;
+
+LPSHELLFOLDER gpDesktop             = NULL;
+LPSHELLFOLDER gpRecycleBin          = NULL;
+LPITEMIDLIST  gPidlRecycleBin       = NULL;
 
 
 // Ordered in the same order of the enums
@@ -303,6 +314,10 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 				break;
 			}
 
+			int width, height;
+			Plat_GetWindowSize( width, height );
+			Render_SetResolution( width, height );
+
 			Render_Reset();
 			ImGui_ImplWin32_NewFrame();
 			Main_WindowDraw();
@@ -362,12 +377,54 @@ bool Plat_IsKeyPressed( Key key )
 }
 
 
+bool UndoSys_Init()
+{
+	HRESULT hr = SHGetDesktopFolder( &gpDesktop );
+	if ( hr != S_OK )
+	{
+		printf( "UndoSys_Init(): Failed to get Desktop Folder!\n" );
+		return false;
+	}
+
+	hr = SHGetSpecialFolderLocation( 0, CSIDL_BITBUCKET, &gPidlRecycleBin );
+	if ( hr != S_OK )
+	{
+		printf( "UndoSys_Init(): Failed to get Recycle Bin Location!\n" );
+		return false;
+	}
+
+	hr = gpDesktop->BindToObject( gPidlRecycleBin, NULL, IID_IShellFolder, (LPVOID*)&gpRecycleBin );
+	if ( hr != S_OK )
+	{
+		printf( "UndoSys_Init(): Failed to Bind to Recycle Bin!\n" );
+		return false;
+	}
+
+	// STRRET strRet;
+	// hr = gpDesktop->GetDisplayNameOf( gPidlRecycleBin, SHGDN_NORMAL, &strRet );
+	// 
+	// if ( hr != S_OK )
+	// {
+	// 	printf( "UndoSys_Init(): Failed to get Recycle Bin Display Name!\n" );
+	// 	return false;
+	// }
+
+	return true;
+}
+
+
+bool UndoSys_Shutdown()
+{
+	return true;
+}
+
+
 bool Plat_Init()
 {
 	// allow for wchar_t to be printed in console
 	setlocale( LC_ALL, "" );
 
-	if ( !UndoManager_Init() )
+	if ( !UndoSys_Init() )
 	{
 		printf( "Plat_Init(): Failed to Initialize UndoManager\n" );
 		return false;
@@ -454,7 +511,7 @@ bool Plat_Init()
 
 void Plat_Shutdown()
 {
-	UndoManager_Shutdown();
+	UndoSys_Shutdown();
 	FolderMonitor_Shutdown();
 }
 
@@ -603,7 +660,7 @@ int Plat_Stat( const std::filesystem::path& file, struct stat* info )
 }
 
 
-std::USTRING Plat_ToUnicode( const char* spStr )
+std::wstring Plat_ToWideChar( const char* spStr )
 {
 	WCHAR nameW[ 2048 ] = { 0 };
 
@@ -616,24 +673,36 @@ std::USTRING Plat_ToUnicode( const char* spStr )
 	return L"";
 }
 
-int Plat_ToUnicode( const char* spStr, wchar_t* spDst, int sSize )
+int Plat_ToWideChar( const char* spStr, wchar_t* spDst, int sSize )
 {
 	// the following function converts the UTF-8 filename to UTF-16 (WCHAR) nameW
 	return MultiByteToWideChar( CP_UTF8, 0, spStr, -1, spDst, sSize );
 }
 
-std::string Plat_FromUnicode( const uchar* spStr )
+
+std::string Plat_ToMultiByte( const wchar_t* spStr )
 {
 	char name[ 2048 ] = { 0 };
 
 	// the following function converts the UTF-8 filename to UTF-16 (WCHAR) nameW
 	int  len          = WideCharToMultiByte( CP_UTF8, 0, spStr, -1, name, 2048, NULL, NULL );
 
-	if ( len > 0 )
-		return name;
-
-	return "";
+	return name;
 }
+
+
+int Plat_ToMultiByte( const wchar_t* spStr, char* spDst, int sSize )
+{
+	return WideCharToMultiByte( CP_UTF8, 0, spStr, -1, spDst, sSize, NULL, NULL );
+}
+
+
+int Plat_ToMultiByte( const std::wstring& srStr, std::string& srDst )
+{
+	srDst.resize( srStr.size() );
+	return WideCharToMultiByte( CP_UTF8, 0, srStr.data(), -1, srDst.data(), srStr.size(), NULL, NULL );
+}
+
 
 std::USTRING Plat_GetModuleName()
 {
@@ -656,5 +725,228 @@ void Plat_CloseLibrary( Module mod )
 void* Plat_LoadFunc( Module mod, const char* name )
 {
 	return GetProcAddress( (HMODULE)mod, name );
+}
+
+
+// ---------------------------------------------------------------------
+
+
+static BOOL ExecCommand( LPITEMIDLIST pidl, std::string_view cmd )
+{
+	BOOL          bReturn  = FALSE;
+	LPCONTEXTMENU pCtxMenu = NULL;
+
+	HRESULT       hr       = gpRecycleBin->GetUIObjectOf( gHWND, 1, (LPCITEMIDLIST*)&pidl, IID_IContextMenu, NULL, (LPVOID*)&pCtxMenu );
+
+	if ( SUCCEEDED( hr ) )
+	{
+		UINT  uiID        = UINT( -1 );
+		UINT  uiCommand   = 0;
+		UINT  uiMenuFirst = 1;
+		UINT  uiMenuLast  = 0x00007FFF;
+		HMENU hmenuCtx;
+		int   iMenuPos = 0;
+		int   iMenuMax = 0;
+		TCHAR szMenuItem[ 128 ];
+		TCHAR szTrace[ 512 ];
+		char  verb[ MAX_PATH ];
+
+		hmenuCtx = CreatePopupMenu();
+		hr       = pCtxMenu->QueryContextMenu( hmenuCtx, 0, uiMenuFirst, uiMenuLast, CMF_NORMAL );
+
+		iMenuMax = GetMenuItemCount( hmenuCtx );
+		wsprintf( szTrace, _T("Nb Items added to the menu %d\n\n"), iMenuMax );
+
+		for ( iMenuPos = 0; iMenuPos < iMenuMax; iMenuPos++ )
+		{
+			GetMenuStringW( hmenuCtx, iMenuPos, szMenuItem, sizeof( szMenuItem ), MF_BYPOSITION );
+
+			uiID = GetMenuItemID( hmenuCtx, iMenuPos );
+
+			if ( ( uiID == -1 ) || ( uiID == 0 ) )
+			{
+				printf( "No Verb found for entry %d\n", uiID );
+				continue;
+			}
+
+			// When we'll have found the right command, we'll be obliged to perform a
+			// 'uiID - 1' else the verbs are going to be be misaligned from they're
+			// real ID
+			hr = pCtxMenu->GetCommandString( uiID - 1, GCS_VERBA, NULL, verb, sizeof( verb ) );
+			if ( FAILED( hr ) )
+			{
+				verb[ 0 ] = TCHAR( '\0' );
+			}
+			else
+			{
+				if ( verb == cmd )
+				{
+					uiCommand = uiID - 1;
+					break;
+				}
+			}
+		}
+
+		if ( (UINT)-1 != uiCommand )
+		{
+			// could use CMINVOKECOMMANDINFOEX for the W strings it contains
+			CMINVOKECOMMANDINFO cmi;
+
+			ZeroMemory( &cmi, sizeof( CMINVOKECOMMANDINFO ) );
+			cmi.cbSize       = sizeof( CMINVOKECOMMANDINFO );
+			cmi.fMask        = CMIC_MASK_FLAG_NO_UI;
+			cmi.hwnd         = gHWND;
+			cmi.lpParameters = NULL;
+			cmi.lpDirectory  = NULL;
+			cmi.lpVerb       = MAKEINTRESOURCEA( uiCommand );
+			cmi.nShow        = SW_SHOWNORMAL;
+			cmi.dwHotKey     = NULL;
+			cmi.hIcon        = NULL;
+
+			hr               = pCtxMenu->InvokeCommand( &cmi );
+
+			if ( SUCCEEDED( hr ) )
+			{
+				bReturn = TRUE;
+			}
+		}
+	}
+
+	pCtxMenu->Release();
+
+	return bReturn;
+}
+
+
+bool Plat_RestoreFile( const fs::path& file )
+{
+	HRESULT      hr        = S_OK;
+	LPITEMIDLIST pidl      = NULL;
+	IEnumIDList* enumFiles = NULL;
+
+	// Iterate through list
+	gpRecycleBin->EnumObjects( gHWND, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS | SHCONTF_INCLUDEHIDDEN, &enumFiles );
+
+	if ( !SUCCEEDED( hr ) )
+		return false;
+
+	STRRET strRet;
+	bool   foundFile = false;
+	while ( enumFiles->Next( 1, &pidl, NULL ) != S_FALSE )
+	{
+		hr = gpRecycleBin->GetDisplayNameOf( pidl, SHGDN_NORMAL, &strRet );
+
+		if ( !SUCCEEDED( hr ) )
+			continue;
+
+		if ( strRet.pOleStr == file )
+		{
+			foundFile = true;
+			break;
+		}
+	}
+
+	if ( !foundFile )
+		return false;
+
+#if 0
+	// Remove from system clipboard history
+	{
+		// if ( TRUE == m_ChkRBin )
+		{
+			SHChangeNotifyEntry entry;
+			LPITEMIDLIST        ppidl;
+			// pfSHChangeNotifyRegister SHChangeNotifyRegister;
+
+			// SHChangeNotifyRegister = (pfSHChangeNotifyRegister)GetProcAddress( m_hShell32,
+			//                                                                    MAKEINTRESOURCE( 2 ) );
+
+			if ( SHGetSpecialFolderLocation( gHWND, CSIDL_BITBUCKET, &ppidl ) != NOERROR )
+			{
+				printf( "GetSpecialFolder problem\n" );
+			}
+
+			entry.pidl       = ppidl;
+			entry.fRecursive = TRUE;
+			ULONG m_hNotifyRBin  = SHChangeNotifyRegister( gHWND,
+				                                            SHCNF_ACCEPT_INTERRUPTS | SHCNF_ACCEPT_NON_INTERRUPTS,
+				                                            SHCNE_ALLEVENTS,
+				                                            WM_SHELLNOTIFY,  // Message that would be sent by the Shell
+				                                            1,
+			                                               &entry );
+			if ( NULL == m_hNotifyRBin )
+			{
+				printf( "Warning: Change Register Failed for RecycleBin\n" );
+			}
+		}
+		// else
+		// {
+		// 	pfSHChangeNotifyDeregister SHChangeNotifyDeregister = (pfSHChangeNotifyDeregister)GetProcAddress( m_hShell32,
+		// 	                                                                                                  MAKEINTRESOURCE( 4 ) );
+		// 
+		// 	if ( NULL != SHChangeNotifyDeregister )
+		// 	{
+		// 		BOOL bDeregister = SHChangeNotifyDeregister( m_hNotifyRBin );
+		// 	}
+		// }
+	}
+#endif
+
+	return ExecCommand( pidl, "undelete" );
+}
+
+
+bool Plat_DeleteFile( const fs::path& file, bool showConfirm, bool addToUndo )
+{
+	TCHAR Buffer[ 2048 + 4 ];
+
+	wcsncpy_s( Buffer, 2048 + 4, file.c_str(), 2048 );
+	Buffer[ wcslen( Buffer ) + 1 ] = 0;  //Double-Null-Termination
+
+	SHFILEOPSTRUCT s;
+	s.hwnd                  = gHWND;
+	s.wFunc                 = FO_DELETE;
+	s.pFrom                 = Buffer;
+	s.pTo                   = NULL;
+	s.fFlags                = FOF_ALLOWUNDO;
+	s.fAnyOperationsAborted = false;
+	s.hNameMappings         = NULL;
+	s.lpszProgressTitle     = NULL;
+
+	if ( !showConfirm )
+		s.fFlags |= FOF_SILENT;
+
+	int rc = SHFileOperation( &s );
+
+	if ( rc != 0 )
+	{
+		wprintf( L"Failed To Delete File: %s\n", file.c_str() );
+		return false;
+	}
+
+	wprintf( L"Deleted File: %s\n", file.c_str() );
+
+	if ( !addToUndo )
+		return true;
+
+	UndoOperation* undo = UndoSys_AddUndo();
+
+	if ( undo == nullptr )
+	{
+		wprintf( L"DeleteFile: Failed to add to undo stack?\n" );
+		return true;
+	}
+
+	auto deleteData   = new UndoData_Delete;
+	deleteData->aPath = file;
+	undo->apData      = deleteData;
+
+	return true;
+}
+
+
+void Plat_RenameFile( const fs::path& srPath, const fs::path& srNewName, bool addToUndo )
+{
+
 }
 

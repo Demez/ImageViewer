@@ -8,10 +8,13 @@
 struct ImageInfo;
 struct ImDrawData;
 class ivec2;
+
 typedef void* ImTextureID;
+struct ImFont;
+struct ImFontConfig;
 
 
-enum ImageFilter : unsigned char
+enum ImageFilter // : unsigned char
 {
 	ImageFilter_Nearest,
 	ImageFilter_Linear,
@@ -25,10 +28,11 @@ enum ImageFilter : unsigned char
 
 struct ImageDrawInfo
 {
-	double aX;
-	double aY;
-	int aWidth;
-	int aHeight;
+	double      aX;
+	double      aY;
+	int         aWidth;
+	int         aHeight;
+	float       aRotation;
 	ImageFilter aFilter = ImageFilter_Cubic;
 };
 
@@ -62,6 +66,9 @@ RENDER_DLL_FUNC( void, Render_FreeImage, ImageInfo* spInfo );
 RENDER_DLL_FUNC( void, Render_DrawImage, ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo );
 RENDER_DLL_FUNC( void, Render_DownscaleImage, ImageInfo* spInfo, const ivec2& srDestSize );
 RENDER_DLL_FUNC( ImTextureID, Render_AddTextureToImGui, ImageInfo* spInfo );
+
+RENDER_DLL_FUNC( ImFont*, Render_AddFont, const std::filesystem::path& srPath, float sSizePixels, const ImFontConfig* spFontConfig );
+RENDER_DLL_FUNC( bool,    Render_BuildFonts, void );
 
 #ifdef RENDER_DLL
 }

@@ -56,6 +56,8 @@ bool                       fs_read_next( DirHandle_t dirh, fs::path& file );
 bool                       fs_read_close( DirHandle_t dirh );
 
 std::vector< char >        fs_read_file( const fs::path& srFilePath );
+bool                       fs_read_file( const fs::path& srFilePath, std::vector< char >& srData );
+std::vector< char >        fs_read_bytes( const fs::path& srFilePath, int bytes );
 
 // ==============================================================================
 // std::vector Functions
