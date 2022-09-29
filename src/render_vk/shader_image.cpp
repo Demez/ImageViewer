@@ -26,11 +26,8 @@ struct ImgVert_t
 
 struct ImgPush_t
 {
-	vec2        aScale;
 	vec2        aTranslate;
-
 	vec2        aViewPort;
-	vec2        aTextureSize;
 	vec2        aDrawSize;
 
 	int         aTexIndex;
@@ -166,35 +163,19 @@ void VK_DrawImageShader()
 
 		// update push constant
 		ImgPush_t push{};
-		push.aViewPort.x = VK_GetSwapExtent().width;
-		push.aViewPort.y      = VK_GetSwapExtent().height;
 
-		push.aScale.x = 2.0f / VK_GetSwapExtent().width;
-		push.aScale.y = 2.0f / VK_GetSwapExtent().height;
-		// push.aTranslate.x = ( drawInfo.aX - ( VK_GetSwapExtent().width / 2.f ) ) * push.aScale.x;
-		// push.aTranslate.y = ( drawInfo.aY - ( VK_GetSwapExtent().height / 2.f ) ) * push.aScale.y;
-		push.aTranslate.x = drawInfo.aX;
-		push.aTranslate.y = drawInfo.aY;
+		push.aViewPort.x    = VK_GetSwapExtent().width;
+		push.aViewPort.y    = VK_GetSwapExtent().height;
 
-		push.aScale.x *= drawInfo.aWidth;
-		push.aScale.y *= drawInfo.aHeight;
-		
-		// useless? just use the textureSize() function?
+		push.aTranslate.x   = drawInfo.aX;
+		push.aTranslate.y   = drawInfo.aY;
+
 		push.aDrawSize.x    = shaderDraw.aDrawInfo.aWidth;
 		push.aDrawSize.y    = shaderDraw.aDrawInfo.aHeight;
-		push.aTextureSize.x = shaderDraw.apInfo->aWidth;
-		push.aTextureSize.y = shaderDraw.apInfo->aHeight;
 
-		push.aFilterType = shaderDraw.aDrawInfo.aFilter;
-
-		// printf( "SCALE:  %.6f x %.6f   TRANSLATE: %.6f x %.6f   OFFSET: %.6f x %.6f\n",
-		// 	push.aScale.x, push.aScale.y,
-		// 	push.aTranslate.x, push.aTranslate.y,
-		// 	drawInfo.aX, drawInfo.aY
-		// );
-
-		push.aTexIndex = shaderDraw.apTexture->aIndex;
-		push.aRotation = shaderDraw.aDrawInfo.aRotation;
+		push.aFilterType    = shaderDraw.aDrawInfo.aFilter;
+		push.aTexIndex      = shaderDraw.apTexture->aIndex;
+		push.aRotation      = shaderDraw.aDrawInfo.aRotation;
 
 		// maybe check if the compute shader has an output for this? idk
 
@@ -207,20 +188,12 @@ void VK_DrawImageShader()
 
 void VK_CreateImageMesh()
 {
-	// gVertices.emplace_back( vec2{ -1.0f, -1.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
-	// gVertices.emplace_back( vec2{ 1.0f, -1.0f }, vec2{ 1.0f, 0.0f } );   // Bottom Right
-	// gVertices.emplace_back( vec2{ 1.0f, 1.0f }, vec2{ 1.0f, 1.0f } );    // Top Right
-	// 
-	// gVertices.emplace_back( vec2{ -1.0f, -1.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
-	// gVertices.emplace_back( vec2{ -1.0f, 1.0f }, vec2{ 0.0f, 1.0f } );   // Top Left
-	// gVertices.emplace_back( vec2{ 1.0f, 1.0f }, vec2{ 1.0f, 1.0f } );    // Top Right
-
-	gVertices.emplace_back( vec2{ 0.0f, 0.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
-	gVertices.emplace_back( vec2{ 1.0f, 0.0f }, vec2{ 1.0f, 0.0f } );   // Bottom Right
+	gVertices.emplace_back( vec2{ -1.0f, -1.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
+	gVertices.emplace_back( vec2{ 1.0f, -1.0f }, vec2{ 1.0f, 0.0f } );   // Bottom Right
 	gVertices.emplace_back( vec2{ 1.0f, 1.0f }, vec2{ 1.0f, 1.0f } );    // Top Right
-
-	gVertices.emplace_back( vec2{ 0.0f, 0.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
-	gVertices.emplace_back( vec2{ 0.0f, 1.0f }, vec2{ 0.0f, 1.0f } );   // Top Left
+	
+	gVertices.emplace_back( vec2{ -1.0f, -1.0f }, vec2{ 0.0f, 0.0f } );  // Bottom Left
+	gVertices.emplace_back( vec2{ -1.0f, 1.0f }, vec2{ 0.0f, 1.0f } );   // Top Left
 	gVertices.emplace_back( vec2{ 1.0f, 1.0f }, vec2{ 1.0f, 1.0f } );    // Top Right
 
 	// create a vertex buffer for the mesh

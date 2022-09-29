@@ -21,7 +21,8 @@ void main()
     if ( push.filterType == ImageFilter_Cubic )
 	{
 		// outColor = BiCubic( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
-		outColor = DoPixelBinning( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
+		// outColor = DoPixelBinning( texSamplers[push.texIndex], fragTexCoord, push.textureSize, push.drawSize );
+		outColor = DoPixelBinning( texSamplers[push.texIndex], fragTexCoord, textureSize( texSamplers[push.texIndex], 0 ), push.drawSize );
 	}
     else if ( push.filterType == ImageFilter_Gaussian )
 	{

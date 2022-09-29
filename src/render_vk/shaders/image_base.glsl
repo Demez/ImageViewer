@@ -1,10 +1,7 @@
 
 layout(push_constant) uniform Push {
-    vec2  scale;
     vec2  translate;
-
     vec2  viewport;
-	vec2  textureSize;
 	vec2  drawSize;
 
 	int   texIndex;

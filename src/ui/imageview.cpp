@@ -144,21 +144,28 @@ void HandleWheelEvent( char scroll )
 	int mouseX, mouseY;
 	Plat_GetMousePos( mouseX, mouseY );
 
-	double oldZoom = gZoomLevel;
+	int width, height;
+	Plat_GetWindowSize( width, height );
+
+	// offset to make the center of the window 0
+	mouseX            = mouseX - ( width * 0.5 );
+	mouseY            = mouseY - ( height * 0.5 );
+
+	double oldZoom    = gZoomLevel;
 
 	// recalc gZoomLevel
-	gZoomLevel = (double)(std::max(1, gDrawInfo.aWidth) * factor) / (double)gpImageInfo->aWidth;
+	gZoomLevel        = (double)( std::max( 1, gDrawInfo.aWidth ) * factor ) / (double)gpImageInfo->aWidth;
 
 	// round it so we don't get something like 0.9999564598 or whatever instead of 1.0
-	gZoomLevel = std::max( ZOOM_MIN, round( gZoomLevel * 100 ) / 100 );
+	gZoomLevel        = std::max( ZOOM_MIN, round( gZoomLevel * 100 ) / 100 );
 
 	// recalculate draw width and height
 	gDrawInfo.aWidth  = (double)gpImageInfo->aWidth * gZoomLevel;
 	gDrawInfo.aHeight = (double)gpImageInfo->aHeight * gZoomLevel;
-	
+
 	// recalculate image position to keep image where cursor is
-	gDrawInfo.aX = mouseX - gZoomLevel / oldZoom * ( mouseX - gDrawInfo.aX );
-	gDrawInfo.aY = mouseY - gZoomLevel / oldZoom * ( mouseY - gDrawInfo.aY );
+	gDrawInfo.aX      = mouseX - gZoomLevel / oldZoom * ( mouseX - gDrawInfo.aX );
+	gDrawInfo.aY      = mouseY - gZoomLevel / oldZoom * ( mouseY - gDrawInfo.aY );
 
 	Main_ShouldDrawWindow();
 
@@ -441,7 +448,9 @@ void ImageView_Draw()
 
 		ImGui::Separator();
 
-		ImGui::SliderAngle( "test", &gDrawInfo.aRotation, 0, 360 );
+		ImGui::TextUnformatted( "Rotate" );
+		ImGui::SetNextItemWidth( -1.f );  // force it to fill the window
+		ImGui::SliderAngle( " rotate_slider", &gDrawInfo.aRotation, 0, 360 );
 	}
 	else
 	{
@@ -527,17 +536,11 @@ void ImageView_SetZoomLevel( double level )
 
 void ImageView_ResetZoom()
 {
-	int width, height;
-	Plat_GetWindowSize( width, height );
-
-	int centerX = width / 2;
-	int centerY = height / 2;
-
 	// keep where we are centered on in the image
-	gDrawInfo.aX      = centerX - 1 / gZoomLevel * ( centerX - gDrawInfo.aX );
-	gDrawInfo.aY      = centerY - 1 / gZoomLevel * ( centerY - gDrawInfo.aY );
+	gDrawInfo.aX = 1 / gZoomLevel * ( gDrawInfo.aX );
+	gDrawInfo.aY = 1 / gZoomLevel * ( gDrawInfo.aY );
 
-	gZoomLevel        = 1.0;
+	gZoomLevel   = 1.0;
 
 	if ( !gpImageInfo )
 		return;
@@ -585,8 +588,8 @@ void ImageView_FitInView( bool sScaleUp )
 
 	UpdateZoom();
 
-	gDrawInfo.aX = ( width - gDrawInfo.aWidth ) / 2;
-	gDrawInfo.aY = ( height - gDrawInfo.aHeight ) / 2;
+	gDrawInfo.aX = 0.f;
+	gDrawInfo.aY = 0.f;
 }
 
 

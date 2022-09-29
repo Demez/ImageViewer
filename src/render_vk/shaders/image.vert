@@ -22,17 +22,12 @@ mat2 RotateMat2( float angle )
 void main()
 {
     vec2 scale = 2.0f / push.viewport;
-    vec2 translate = ( push.translate - ( push.viewport / 2.f ) ) * scale;
+    vec2 translate = push.translate * scale;
 
     // create a rotation matrix
     mat2 rotMat = RotateMat2( push.rotation );
 
-    // translate the pivot to the origin before rotation, then back after rotation
-    // vec2 finalRotMat = push.translate * rotMat * -push.translate;
-    // vec2 finalRotMat = inPosition * rotMat;
-
-    // WORKING !!!!!
-    vec2 finalRotMat = (inPosition * push.drawSize) * rotMat;
+    vec2 finalRotMat = ( inPosition * ( push.drawSize * 0.5 ) ) * rotMat;
 
     gl_Position = vec4( finalRotMat * scale + translate, 0.0, 1.0 );
 
