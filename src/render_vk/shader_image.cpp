@@ -29,11 +29,10 @@ struct ImgPush_t
 	vec2        aScale;
 	vec2        aTranslate;
 
-	vec2        aImageScale;
-	vec2        aBicubicScale;
-	vec2        aWindowScale;
+	vec2        aViewPort;
 	vec2        aTextureSize;
 	vec2        aDrawSize;
+
 	int         aTexIndex;
 	ImageFilter aFilterType;
 	float       aRotation;
@@ -167,19 +166,15 @@ void VK_DrawImageShader()
 
 		// update push constant
 		ImgPush_t push{};
-		push.aWindowScale.x = VK_GetSwapExtent().width;
-		push.aWindowScale.y = VK_GetSwapExtent().height;
-
-		push.aImageScale = push.aScale;
-
-		// idfk
-		push.aBicubicScale.x  = 4;
-		push.aBicubicScale.y  = 4;
+		push.aViewPort.x = VK_GetSwapExtent().width;
+		push.aViewPort.y      = VK_GetSwapExtent().height;
 
 		push.aScale.x = 2.0f / VK_GetSwapExtent().width;
 		push.aScale.y = 2.0f / VK_GetSwapExtent().height;
-		push.aTranslate.x = ( drawInfo.aX - ( VK_GetSwapExtent().width / 2.f ) ) * push.aScale.x;
-		push.aTranslate.y = ( drawInfo.aY - ( VK_GetSwapExtent().height / 2.f ) ) * push.aScale.y;
+		// push.aTranslate.x = ( drawInfo.aX - ( VK_GetSwapExtent().width / 2.f ) ) * push.aScale.x;
+		// push.aTranslate.y = ( drawInfo.aY - ( VK_GetSwapExtent().height / 2.f ) ) * push.aScale.y;
+		push.aTranslate.x = drawInfo.aX;
+		push.aTranslate.y = drawInfo.aY;
 
 		push.aScale.x *= drawInfo.aWidth;
 		push.aScale.y *= drawInfo.aHeight;

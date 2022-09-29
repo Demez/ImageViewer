@@ -1,23 +1,23 @@
-﻿#include <memory>
+﻿// #include <memory>
 
 size_t gTotalAllocated = 0;
 
 // replace operator new and delete to log allocations
-void*  operator new( size_t n )
-{
-	size_t* p = (size_t*)malloc( n + sizeof( size_t ) );
-	*p++      = n;
-	gTotalAllocated += n;
-	return p;
-}
-
-void operator delete( void* p ) throw()
-{
-	size_t* sp = (size_t*)p;
-	*--sp;
-	gTotalAllocated -= *sp;
-	free( sp );
-}
+// void*  operator new( size_t n )
+// {
+// 	size_t* p = (size_t*)malloc( n + sizeof( size_t ) );
+// 	*p++      = n;
+// 	gTotalAllocated += n;
+// 	return p;
+// }
+// 
+// void operator delete( void* p ) throw()
+// {
+// 	size_t* sp = (size_t*)p;
+// 	*--sp;
+// 	gTotalAllocated -= *sp;
+// 	free( sp );
+// }
 
 #include "main.h"
 #include "util.h"

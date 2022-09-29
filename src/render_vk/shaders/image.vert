@@ -11,36 +11,31 @@ layout(location = 1) in vec2 inTexCoord;
 
 layout(location = 0) out vec2 fragTexCoord;
 
-vec2 Rotate( vec2 pos, float angle )
+mat2 RotateMat2( float angle )
 {
 	float s = sin( angle );
 	float c = cos( angle );
 
-    vec2 rotatedPosition = vec2(
-     pos.x * c + pos.y * s,
-     pos.y * c - pos.x * s );
-
-	// mat2 rotMat = mat2( c, -s, s, c );
-	// return rotMat * pos;
-    return rotatedPosition;
-}
-
-
-mat2 Rotate2D(float _angle){
-    return mat2(cos(_angle),-sin(_angle),
-                sin(_angle),cos(_angle));
+	return mat2( c, -s, s, c );
 }
 
 void main()
 {
+    vec2 scale = 2.0f / push.viewport;
+    vec2 translate = ( push.translate - ( push.viewport / 2.f ) ) * scale;
 
+    // create a rotation matrix
+    mat2 rotMat = RotateMat2( push.rotation );
 
-    // gl_Position = vec4( inPosition * push.scale + push.translate, 0.0, 1.0 );
-    // gl_Position = vec4( inPosition + push.translate, 0.0, 1.0 );
-    // gl_Position = vec4( Rotate( inPosition * push.scale, push.rotation ) + push.translate, 0.0, 1.0 );
-    gl_Position = vec4( Rotate( inPosition, push.rotation ) * push.scale + push.translate, 0.0, 1.0 );
-    // gl_Position = vec4( Rotate2( inPosition, push.rotation ) + push.translate, 0.0, 1.0 );
-    //gl_Position = vec4( Rotate( inPosition, push.rotation ) * Rotate( push.scale, push.rotation ) + push.translate, 0.0, 1.0 );
+    // translate the pivot to the origin before rotation, then back after rotation
+    // vec2 finalRotMat = push.translate * rotMat * -push.translate;
+    // vec2 finalRotMat = inPosition * rotMat;
+
+    // WORKING !!!!!
+    vec2 finalRotMat = (inPosition * push.drawSize) * rotMat;
+
+    gl_Position = vec4( finalRotMat * scale + translate, 0.0, 1.0 );
+
     fragTexCoord = inTexCoord;
 }
 

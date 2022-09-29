@@ -244,3 +244,37 @@ class vec3
 	}
 };
 
+class mat2
+{
+  public:
+	mat2( float x = 0.f, float y = 0.f, float z = 0.f, float w = 0.f ) :
+		x( x ), y( y ), z( z ), w( w )
+	{
+	}
+
+	float           x{}, y{}, z{}, w{};
+
+	constexpr float operator[]( int i )
+	{
+		// index into memory where vars are stored, and clamp to not read garbage
+		return *( &x + std::clamp( i, 0, 3 ) );
+	}
+
+	constexpr void operator=( const mat2& other )
+	{
+		// Guard self assignment
+		if ( this == &other )
+			return;
+
+		std::memcpy( &x, &other.x, sizeof( mat2 ) );
+	}
+
+	constexpr bool operator==( const mat2& other )
+	{
+		// Guard self assignment
+		if ( this == &other )
+			return true;
+
+		return !( std::memcmp( &x, &other.x, sizeof( mat2 ) ) );
+	}
+};

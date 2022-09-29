@@ -402,7 +402,7 @@ void ImageView_Draw()
 
 		// char* test = utf8_decode( gImagePath.c_str(),);
 
-		ImGui::Text( "Image: %s", what.c_str() );
+		// ImGui::Text( "Image: %s", what.c_str() );
 
 		ImGui::Separator();
 
