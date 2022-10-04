@@ -1996,12 +1996,13 @@ ImFontAtlas::~ImFontAtlas()
 void    ImFontAtlas::ClearInputData()
 {
     IM_ASSERT(!Locked && "Cannot modify a locked ImFontAtlas between NewFrame() and EndFrame/Render()!");
-    for (int i = 0; i < ConfigData.Size; i++)
-        if (ConfigData[i].FontData && ConfigData[i].FontDataOwnedByAtlas)
-        {
-            IM_FREE(ConfigData[i].FontData);
-            ConfigData[i].FontData = NULL;
-        }
+    // DEMEZ: hack to have ImGui not try to free this smh
+    // for (int i = 0; i < ConfigData.Size; i++)
+    //     if (ConfigData[i].FontData && ConfigData[i].FontDataOwnedByAtlas)
+    //     {
+    //         IM_FREE(ConfigData[i].FontData);
+    //         ConfigData[i].FontData = NULL;
+    //     }
 
     // When clearing this we lose access to the font name and other information used to build the font.
     for (int i = 0; i < Fonts.Size; i++)
