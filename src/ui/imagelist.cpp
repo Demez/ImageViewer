@@ -27,12 +27,13 @@ struct ImageListElement
 	size_t        aIndex;
 	ImageInfo*    apInfo;
 	ImageDrawInfo aDrawData;
-	size_t        aImageHandle = 0;
+	void*         aImGuiTexture;
 };
 
 
 static std::vector< ImageInfo* > gImageThumbnails;
 
+static std::vector< ImageLoadThreadData_t* > gLoadThreadQueue;
 
 static fs::path                         gNewImagePath = L"C:\\Users\\Demez\\Downloads\\[twitter] lewdakiddo_rb26—2022.09.09—1568386946812215297—FcQHmKGaIAACxvH.png";
 static ImageInfo*          gNewImageData = nullptr;
@@ -64,14 +65,45 @@ void LoadThumbnailFunc()
 {
 	while ( gRunning )
 	{
-		if ( !gNewImageData && !gNewImagePath.empty() )
-			ImageList_LoadThumbnail( gNewImagePath );
+		while ( gLoadThreadQueue.size() )
+		{
+			auto queueItem    = gLoadThreadQueue[ 0 ];
+			queueItem->aState = ImageLoadState_Loading;
+
+			if ( !queueItem->aInfo && !queueItem->aPath.empty() )
+			{
+				queueItem->aPath = fs_clean_path( queueItem->aPath );
+
+				if ( queueItem->aInfo = ImageLoader_LoadImage( queueItem->aPath, queueItem->aData ) )
+					queueItem->aState = ImageLoadState_Finished;
+				else
+					queueItem->aState = ImageLoadState_Error;
+
+				// NOTE: this is possible in Vulkan, need a different VkQueue i think, probably not SDL2 though
+				// gImageHandle = Render_LoadImage( queueItem->aInfo, queueItem->aData );
+			}
+
+			// if ( gLoadThreadQueue.size() && gLoadThreadQueue[ 0 ] == queueItem )
+			// 	gLoadThreadQueue.erase( gLoadThreadQueue.begin() );
+
+			vec_remove( gLoadThreadQueue, queueItem );
+		}
 
 		Plat_Sleep( 100 );
 	}
 }
 
-// std::thread gLoadImageThread( LoadImageFunc );
+
+// void ImageLoadThread_AddTask( ImageLoadThreadData_t* srData )
+// {
+// 	gLoadThreadQueue.push_back( srData );
+// }
+// 
+// void ImageLoadThread_RemoveTask( ImageLoadThreadData_t* srData )
+// {
+// }
+
+// std::thread gLoadThumbnailThread( LoadThumbnailFunc );
 
 
 void ImageList_Update()

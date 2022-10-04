@@ -9,6 +9,7 @@
 #include "imgui_impl_vulkan.h"
 
 #include <thread>
+#include <mutex>
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -30,6 +31,8 @@ u8                             gCmdIndex = 0;
 
 bool                           gInPresentQueue = false;
 bool                           gInGraphicsQueue = false;
+
+std::mutex                     gGraphicsMutex;
 
 
 VkCommandBuffer VK_GetCommandBuffer()
@@ -160,8 +163,14 @@ void VK_EndSingleCommand()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers    = &gSingleCommandBuffer;
 
+	VK_WaitForGraphicsQueue();
+	gGraphicsMutex.lock();
+
 	vkQueueSubmit( VK_GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE );
-	vkQueueWaitIdle( VK_GetGraphicsQueue() );
+	gInGraphicsQueue = true;
+
+	VK_WaitForGraphicsQueue();
+	gGraphicsMutex.unlock();
 
 	VK_ResetCommandPool( VK_GetSingleTimeCommandPool() );
 }
@@ -200,7 +209,10 @@ void VK_WaitForGraphicsQueue()
 
 void VK_RecordCommands()
 {
+	gGraphicsMutex.lock();
+
 	VK_WaitForPresentQueue();
+	VK_WaitForGraphicsQueue();
 	VK_ResetCommandPool( VK_GetPrimaryCommandPool() );
 
 	// For each framebuffer, begin a primary
@@ -306,6 +318,8 @@ void VK_Present()
 	presentInfo.pResults           = nullptr;
 
 	res                            = vkQueuePresentKHR( VK_GetGraphicsQueue(), &presentInfo );
+
+	gGraphicsMutex.unlock();
 
 	gInPresentQueue                = true;
 

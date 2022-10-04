@@ -584,9 +584,9 @@ void Plat_GetClientSize( int& srWidth, int& srHeight )
 }
 
 
-void Plat_SetWindowTitle( const std::USTRING& srTitle )
+void Plat_SetWindowTitle( const uchar* spTitle )
 {
-	SetWindowText( gHWND, srTitle.c_str() );
+	SetWindowText( gHWND, spTitle );
 }
 
 

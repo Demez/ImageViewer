@@ -26,7 +26,7 @@ size_t                                gImageHandle   = 0;
 double                                gZoomLevel     = 1.0f;
 bool                                  gGrabbed       = false;
 
-std::vector< ImageLoadThreadData_t* > gLoadThreadQueue;
+static std::vector< ImageLoadThreadData_t* > gLoadThreadQueue;
 std::vector< ImageLoadThreadData_t* > gImageDataQueue;
 // ImageLoadThreadData_t                 gImageData;
 
@@ -49,12 +49,14 @@ void LoadImageFunc()
 				queueItem->aPath = fs_clean_path( queueItem->aPath );
 
 				if ( queueItem->aInfo = ImageLoader_LoadImage( queueItem->aPath, queueItem->aData ) )
+				{
+					gImageHandle      = Render_LoadImage( queueItem->aInfo, queueItem->aData );
 					queueItem->aState = ImageLoadState_Finished;
+				}
 				else
+				{
 					queueItem->aState = ImageLoadState_Error;
-
-				// NOTE: this is possible in Vulkan, need a different VkQueue i think, probably not SDL2 though
-				// gImageHandle = Render_LoadImage( queueItem->aInfo, queueItem->aData );
+				}
 			}
 
 			// if ( gLoadThreadQueue.size() && gLoadThreadQueue[ 0 ] == queueItem )
@@ -208,35 +210,36 @@ void ImageView_SetImageFilter( ImageFilter filter )
 }
 
 
-void ImageView_LoadImage()
+void ImageView_LoadImageFinish()
 {
 	if ( gpImageInfo )
 		ImageView_RemoveImage();
 
 	auto imageData = gImageDataQueue[ 0 ];
 
-	gpImageInfo    = imageData->aInfo;
-
-	gImageHandle   = Render_LoadImage( gpImageInfo, imageData->aData );
-
-	// default zoom settings for now
-	int width, height;
-	Plat_GetWindowSize( width, height );
-
-	gDrawInfo.aX      = ( width - gpImageInfo->aWidth ) / 2;
-	gDrawInfo.aY      = ( height - gpImageInfo->aHeight ) / 2;
+	gpImageInfo       = imageData->aInfo;
+	gImagePath        = imageData->aPath;
+	
+	gDrawInfo.aX      = 0;
+	gDrawInfo.aY      = 0;
 	gDrawInfo.aWidth  = gpImageInfo->aWidth;
 	gDrawInfo.aHeight = gpImageInfo->aHeight;
 	gDrawInfo.aFilter = gZoomOutFilter;
-
-	gImagePath        = imageData->aPath;
 
 	ImageView_FitInView();
 
 	// update image list
 	ImageList_SetPathFromFile( imageData->aPath );
 
-	Plat_SetWindowTitle( L"Demez Image View - " + imageData->aPath.wstring() );
+	// TODO: add file size here, and show the image index for the folder we are in
+	uchar buf[ 512 ] = { '\0' };
+	unprintf( buf, 512, _T("Demez Image Viewer - %s  -  %d x %d"),
+		imageData->aPath.c_str(),
+		gpImageInfo->aWidth,
+		gpImageInfo->aHeight
+	);
+
+	Plat_SetWindowTitle( buf );
 
 	imageData->aPath.clear();
 	imageData->aData.clear();
@@ -269,7 +272,7 @@ void ImageView_Update()
 
 			case ImageLoadState_Finished:
 				// an image being loaded in the background is now ready to be finished loading on the main thread
-				ImageView_LoadImage();
+				ImageView_LoadImageFinish();
 		}
 	}
 

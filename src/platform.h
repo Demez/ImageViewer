@@ -35,6 +35,7 @@ typedef void* Module;
   #define _T( str )    L##str
 
   #define stat         _stat
+  #define unprintf     _snwprintf
 
 #else
 
@@ -47,7 +48,9 @@ typedef void* Module;
   #define USTRING      string
   #define USTRING_VIEW string_view
 
-  #define _T( str ) str
+  #define _T( str )    str
+
+  #define unprintf     snprintf
 
 #endif
 
@@ -106,7 +109,7 @@ bool         Plat_IsKeyPressed( Key key ); //
 
 void*        Plat_GetWindow();
 void         Plat_GetWindowSize( int& srWidth, int& srHeight );
-void         Plat_SetWindowTitle( const std::USTRING& srTitle );
+void         Plat_SetWindowTitle( const uchar* spTitle );
 void         Plat_SetMinWindowSize( int sWidth, int sHeight );
 bool         Plat_WindowOpen();
 bool         Plat_WindowShown(); 
