@@ -34,6 +34,9 @@ size_t gTotalAllocated = 0;
 #include "imgui.h"
 #include "misc/freetype/imgui_freetype.h"
 
+// #define NK_IMPLEMENTATION
+// #include "Nuklear/src/nuklear.h"
+
 
 // TODO LIST:
 // 
@@ -42,9 +45,6 @@ size_t gTotalAllocated = 0;
 // - for the image list, be able to hover over the image and get a larger preview
 // 
 
-// temp
-#define UN_SUNGLASSES "\U0001F60E"
-#define UN_POINT_UP "\u261D"
 
 std::filesystem::path      gFontPath      = _T("CascadiaMono.ttf");
 std::filesystem::path      gFontEmojiPath = _T("seguiemj.ttf");
@@ -55,6 +55,8 @@ ImFont*                    gpFontEmoji    = nullptr;
 static ImFontConfig        gFontConfig;
 static ImFontConfig        gFontEmojiConfig;
 
+// struct nk_context          gNkCtx;
+// struct nk_allocator        gNkAlloc;
 
 Module gRenderer = 0;
 
@@ -211,6 +213,9 @@ bool gFilePropertiesSupported = true;
 static bool gShowImGuiDemo           = false;
 
 
+constexpr float gRot90DegInRad = 1.5708f;
+
+
 void Main_ShouldDrawWindow( bool draw )
 {
 	gShouldDraw |= draw;
@@ -222,9 +227,46 @@ void Main_VoidContextMenu()
 	if ( !ImGui::BeginPopupContextVoid( "main ctx menu" ) )
 		return;
 
+	if ( ImGui::MenuItem( "Fit In View", nullptr, false, ImageView_HasImage() ) )
+	{
+		ImageView_FitInView();
+	}
+
+	if ( ImGui::MenuItem( "Reset Zoom to 100%", nullptr, false, ImageView_HasImage() ) )
+	{
+		ImageView_ResetZoom();
+	}
+	
+	if ( ImGui::MenuItem( "Rotate Left", nullptr, false, ImageView_HasImage() ) )
+	{
+		float rot = ImageView_GetRotation();
+		ImageView_SetRotation( rot - gRot90DegInRad );
+	}
+	
+	if ( ImGui::MenuItem( "Rotate Right", nullptr, false, ImageView_HasImage() ) )
+	{
+		float rot = ImageView_GetRotation();
+		ImageView_SetRotation( rot + gRot90DegInRad );
+	}
+
+	if ( ImGui::MenuItem( "Reset Rotation", nullptr, false, ImageView_HasImage() ) )
+	{
+		ImageView_ResetRotation();
+	}
+
+	ImGui::Separator();
+
 	if ( ImGui::MenuItem( "Open File Location", nullptr, false, ImageView_HasImage() ) )
 	{
 		Plat_BrowseToFile( ImageView_GetImagePath() );
+	}
+
+	if ( ImGui::BeginMenu( "Open With" ) )
+	{
+		// TODO: list programs to open the file with, like fragment image viewer
+		// how would this work on linux actually? hmm
+		ImGui::MenuItem( "nothing lol", nullptr, false, false );
+		ImGui::EndMenu();
 	}
 
 	if ( ImGui::MenuItem( "Copy Image", nullptr, false, false ) )
@@ -317,6 +359,11 @@ void Main_VoidContextMenu()
 }
 
 
+void NuklearTest()
+{
+}
+
+
 void Main_WindowDraw()
 {
 	if ( !gCanDraw )
@@ -332,18 +379,7 @@ void Main_WindowDraw()
 
 	ImGui::NewFrame();
 
-	// if ( gpFont )
-	//  	ImGui::PushFont( gpFont );
-
 	auto& io = ImGui::GetIO();
-
-	// TEMP
-	// ImGui::Text( "Unicode Test: —😎—◘☝—" );
-	//ImGui::Text( "Unicode Test: —" UN_SUNGLASSES "â€”â€”◘" UN_POINT_UP "—" );
-	ImGui::Text( "Unicode Test: â€”ðŸ˜Žâ€”â—˜â˜â€”" );
-
-	static char bufTemp[ 256 ] = { '\0' };
-	ImGui::InputText( "test: ", bufTemp, 256 );
 
 	ImageView_Draw();
 	ImageList_Draw();
@@ -378,11 +414,10 @@ void Main_WindowDraw()
 	if ( gShowImGuiDemo )
 		ImGui::ShowDemoWindow();
 
-	// if ( gpFont )
-	//  	ImGui::PopFont();
-
 	// ----------------------------------------------------------------------
 	// Rendering
+
+	NuklearTest();
 
 	if ( !Plat_WindowOpen() )
 	{ 
@@ -402,6 +437,9 @@ int entry()
 		return 1;
 
 	ImGui::CreateContext();
+
+	// nk_init_default( &gNkCtx, 0 );
+	// nk_init( &gNkCtx, &gNkAlloc, 0 );
 
 	if ( !Plat_Init() )
 	{
@@ -491,7 +529,8 @@ int entry()
 			Main_WindowDraw();
 
 		if ( Plat_WindowFocused() )
-			Plat_Sleep( 0.5 );
+			// Plat_Sleep( 0.5 );
+			Plat_Sleep( 5 );  // TODO: make this refresh rate of monitor?
 
 		else
 			Plat_Sleep( 20 );
@@ -527,7 +566,7 @@ int wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int 
 }
 #elif defined( _WIN32 )
 
-int wmain( int argc, wchar_t* argv[], wchar_t* envp[] )
+int wmain( int argc, wchar_t* argv[] )
 {
 	Args_Init( argc, argv );
 

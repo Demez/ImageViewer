@@ -604,10 +604,11 @@ float ImageView_GetRotation()
 	return gDrawInfo.aRotation;
 }
 
+#define M_PI 3.14159265358979323846
 
 void ImageView_SetRotation( float rotation )
 {
+	rotation = fmod( rotation, M_PI * 2 );
 	gDrawInfo.aRotation = rotation;
 }
-
 
