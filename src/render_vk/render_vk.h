@@ -15,12 +15,15 @@ enum ImageFilter;  // : unsigned char;
 #define VK_COLOR_RESOLVE 1
 
 
-extern float gClearR;
-extern float gClearG;
-extern float gClearB;
+extern float           gClearR;
+extern float           gClearG;
+extern float           gClearB;
 
-extern int   gWidth;
-extern int   gHeight;
+extern int             gWidth;
+extern int             gHeight;
+
+extern VkFormat        gColorFormat;
+extern VkColorSpaceKHR gColorSpace;
 
 
 #if _DEBUG
@@ -30,14 +33,6 @@ extern PFN_vkCmdDebugMarkerBeginEXT      pfnCmdDebugMarkerBegin;
 extern PFN_vkCmdDebugMarkerEndEXT        pfnCmdDebugMarkerEnd;
 extern PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
-
-
-struct SwapChainSupportInfo
-{
-	VkSurfaceCapabilitiesKHR          aCapabilities;
-	std::vector< VkSurfaceFormatKHR > aFormats;
-	std::vector< VkPresentModeKHR >   aPresentModes;
-};
 
 
 struct TextureVK
@@ -83,7 +78,6 @@ bool                                  VK_CreateInstance();
 void                                  VK_DestroyInstance();
 
 void                                  VK_CreateSurface( void* spWindow );
-void                                  VK_DestroySurface();
 
 void                                  VK_SetupPhysicalDevice();
 void                                  VK_CreateDevice();
@@ -103,13 +97,19 @@ VkSampleCountFlagBits                 VK_FindMaxMSAASamples();
 uint32_t                              VK_GetMemoryType( uint32_t sTypeFilter, VkMemoryPropertyFlags sProperties );
 void                                  VK_FindQueueFamilies( VkPhysicalDevice sDevice, u32* spGraphics, u32* spPresent );
 bool                                  VK_ValidQueueFamilies( u32& srPresent, u32& srGraphics );
-void                                  VK_CheckSwapChainSupport( VkPhysicalDevice sDevice, SwapChainSupportInfo& srSupportInfo );
+
+void                                  VK_UpdateSwapchainInfo();
+VkSurfaceCapabilitiesKHR              VK_GetSwapCapabilities();
+VkSurfaceFormatKHR                    VK_ChooseSwapSurfaceFormat();
+VkPresentModeKHR                      VK_ChooseSwapPresentMode();
+VkExtent2D                            VK_ChooseSwapExtent();
 
 // --------------------------------------------------------------------------------------
 // Swapchain
 
-void                                  VK_CreateSwapchain();
+void                                  VK_CreateSwapchain( VkSwapchainKHR spOldSwapchain = nullptr );
 void                                  VK_DestroySwapchain();
+void                                  VK_RecreateSwapchain();
 
 u32                                   VK_GetSwapImageCount();
 const std::vector< VkImage >&         VK_GetSwapImages();
@@ -173,6 +173,9 @@ void                                  VK_FreeCommands();
 VkCommandBuffer                       VK_BeginSingleCommand();
 void                                  VK_EndSingleCommand();
 void                                  VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc );
+
+void                                  VK_WaitForPresentQueue();
+void                                  VK_WaitForGraphicsQueue();
 
 void                                  VK_RecordCommands();
 void                                  VK_Present();

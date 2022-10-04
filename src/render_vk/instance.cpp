@@ -53,14 +53,18 @@ PFN_vkCmdDebugMarkerInsertEXT     pfnCmdDebugMarkerInsert;
 #endif
 
 
-static VkInstance               gInstance;
-static VkDebugUtilsMessengerEXT gLayers;
-static VkSurfaceKHR             gSurface;
-static VkSampleCountFlagBits    gSampleCount;
-static VkPhysicalDevice         gPhysicalDevice;
-static VkDevice                 gDevice;
-static VkQueue                  gGraphicsQueue;
-static VkQueue                  gPresentQueue;
+static VkInstance                        gInstance;
+static VkDebugUtilsMessengerEXT          gLayers;
+static VkSurfaceKHR                      gSurface;
+static VkSampleCountFlagBits             gSampleCount;
+static VkPhysicalDevice                  gPhysicalDevice;
+static VkDevice                          gDevice;
+static VkQueue                           gGraphicsQueue;
+static VkQueue                           gPresentQueue;
+
+static VkSurfaceCapabilitiesKHR          gSwapCapabilities;
+static std::vector< VkSurfaceFormatKHR > gSwapFormats;
+static std::vector< VkPresentModeKHR >   gSwapPresentModes;
 
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VK_DebugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -275,7 +279,9 @@ void VK_FindQueueFamilies( VkPhysicalDevice sDevice, u32* spGraphics, u32* spPre
 		if ( queueFamily.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT) )
 		{
 			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR( sDevice, i, VK_GetSurface(), &presentSupport );
+			VK_CheckResult( vkGetPhysicalDeviceSurfaceSupportKHR( sDevice, i, VK_GetSurface(), &presentSupport ),
+			                "Failed to Get Physical Device Surface Support" );
+
 			if ( presentSupport && spPresent )
 				*spPresent = i;
 
@@ -297,28 +303,96 @@ bool VK_ValidQueueFamilies( u32& srPresent, u32& srGraphics )
 }
 
 
-void VK_CheckSwapChainSupport( VkPhysicalDevice sDevice, SwapChainSupportInfo& srSupportInfo )
+VkSurfaceCapabilitiesKHR VK_GetSwapCapabilities()
 {
-	auto                 surf = VK_GetSurface();
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR( sDevice, surf, &srSupportInfo.aCapabilities );
+	return gSwapCapabilities;
+}
+
+
+VkSurfaceFormatKHR VK_ChooseSwapSurfaceFormat()
+{
+	for ( const auto& availableFormat : gSwapFormats )
+	{
+		if ( availableFormat.format == gColorFormat && availableFormat.colorSpace == gColorSpace )
+		{
+			return availableFormat;
+		}
+	}
+	return gSwapFormats[ 0 ];
+}
+
+
+VkPresentModeKHR VK_ChooseSwapPresentMode()
+{
+	// if ( !GetOption( "VSync" ) )
+	return VK_PRESENT_MODE_IMMEDIATE_KHR;
+
+	for ( const auto& availablePresentMode : gSwapPresentModes )
+	{
+		if ( availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR )
+			return availablePresentMode;
+	}
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+
+VkExtent2D VK_ChooseSwapExtent()
+{
+	// TODO: probably use gWidth and gHeight instead, not sure how this would behave on linux lol
+	// if ( srCapabilities.currentExtent.width != UINT32_MAX )
+	// 	return srCapabilities.currentExtent;
+
+	VkExtent2D size{
+		std::max( gSwapCapabilities.minImageExtent.width, std::min( gSwapCapabilities.maxImageExtent.width, (u32)gWidth ) ),
+		std::max( gSwapCapabilities.minImageExtent.height, std::min( gSwapCapabilities.maxImageExtent.height, (u32)gHeight ) ),
+	};
+
+	return size;
+}
+
+
+void VK_UpdateSwapchainInfo()
+{
+	if ( !gPhysicalDevice )
+	{
+		printf( "VK_UpdateSwapchainInfo(): No Physical Device?\n" );
+		return;
+	}
+
+	VK_CheckResult( vkGetPhysicalDeviceSurfaceCapabilitiesKHR( gPhysicalDevice, VK_GetSurface(), &gSwapCapabilities ),
+	                "Failed to Get Physical Device Surface Capabilities" );
+}
+
+
+bool VK_SetupSwapchainInfo( VkPhysicalDevice sDevice )
+{
+	VkSurfaceKHR surf = VK_GetSurface();
+	VK_CheckResult( vkGetPhysicalDeviceSurfaceCapabilitiesKHR( sDevice, surf, &gSwapCapabilities ),
+	                "Failed to Get Physical Device Surface Capabilities" );
 
 	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, NULL );
+	VK_CheckResult( vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, NULL ),
+	                "Failed to Get Physical Device Surface Formats" );
 
 	if ( formatCount != 0 )
 	{
-		srSupportInfo.aFormats.resize( formatCount );
-		vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, srSupportInfo.aFormats.data() );
+		gSwapFormats.resize( formatCount );
+		VK_CheckResult( vkGetPhysicalDeviceSurfaceFormatsKHR( sDevice, surf, &formatCount, gSwapFormats.data() ),
+		                "Failed to Get Physical Device Surface Formats" );
 	}
 
 	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, NULL );
+	VK_CheckResult( vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, NULL ),
+	                "Failed to Get Physical Device Surface Present Modes" );
 
 	if ( presentModeCount != 0 )
 	{
-		srSupportInfo.aPresentModes.resize( presentModeCount );
-		vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, srSupportInfo.aPresentModes.data() );
+		gSwapPresentModes.resize( presentModeCount );
+		VK_CheckResult( vkGetPhysicalDeviceSurfacePresentModesKHR( sDevice, surf, &presentModeCount, gSwapPresentModes.data() ),
+		                "Failed to Get Physical Device Surface Present Modes" );
 	}
+
+	return !gSwapFormats.empty() && !gSwapPresentModes.empty();
 }
 
 
@@ -328,11 +402,7 @@ bool VK_SuitableCard( VkPhysicalDevice sDevice )
 	bool swapChainAdequate   = false;
 
 	if ( extensionsSupported )
-	{
-		SwapChainSupportInfo swapChainSupport;
-		VK_CheckSwapChainSupport( sDevice, swapChainSupport );
-		swapChainAdequate = !swapChainSupport.aFormats.empty() && !swapChainSupport.aPresentModes.empty();
-	}
+		swapChainAdequate = VK_SetupSwapchainInfo( sDevice );
 
 	u32 graphics, present;
 	VK_FindQueueFamilies( sDevice, &graphics, &present );
@@ -354,11 +424,6 @@ void VK_CreateSurface( void* spWindow )
 #else
   #error "create vulkan surface"
 #endif
-}
-
-
-void VK_DestroySurface()
-{
 }
 
 

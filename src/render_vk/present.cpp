@@ -28,6 +28,9 @@ std::vector< VkFence >         gInFlightFences;
 u8                             gFrameIndex = 0;
 u8                             gCmdIndex = 0;
 
+bool                           gInPresentQueue = false;
+bool                           gInGraphicsQueue = false;
+
 
 VkCommandBuffer VK_GetCommandBuffer()
 {
@@ -173,12 +176,34 @@ void VK_SingleCommand( std::function< void( VkCommandBuffer ) > sFunc )
 }
 
 
-// alternate version of above
+void VK_WaitForPresentQueue()
+{
+	if ( gInPresentQueue )
+	{
+		VK_CheckResult( vkQueueWaitIdle( VK_GetPresentQueue() ), "Failed waiting for present queue" );
+	}
+
+	gInPresentQueue = false;
+}
+
+
+void VK_WaitForGraphicsQueue()
+{
+	if ( gInGraphicsQueue )
+	{
+		VK_CheckResult( vkQueueWaitIdle( VK_GetGraphicsQueue() ), "Failed waiting for graphics queue" );
+	}
+
+	gInGraphicsQueue = false;
+}
 
 
 void VK_RecordCommands()
 {
-	// For each framebuffer, allocate a primary
+	VK_WaitForPresentQueue();
+	VK_ResetCommandPool( VK_GetPrimaryCommandPool() );
+
+	// For each framebuffer, begin a primary
     // command buffer, and record the commands.
 	for ( gCmdIndex = 0; gCmdIndex < gCommandBuffers.size(); gCmdIndex++ )
 	{
@@ -282,6 +307,8 @@ void VK_Present()
 
 	res                            = vkQueuePresentKHR( VK_GetGraphicsQueue(), &presentInfo );
 
+	gInPresentQueue                = true;
+
 	if ( res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR )
 	{
 		printf( "VK_Reset - vkQueuePresentKHR\n" );
@@ -293,10 +320,10 @@ void VK_Present()
 		VK_CheckResult( res, "Failed to present swapchain image!" );
 	}
 
-	vkQueueWaitIdle( VK_GetPresentQueue() );
-
+	// vkQueueWaitIdle( VK_GetPresentQueue() );
+	
 	gFrameIndex = ( gFrameIndex + 1 ) % MAX_FRAMES_IN_FLIGHT;
-
-	VK_ResetCommandPool( VK_GetPrimaryCommandPool() );
+	
+	// VK_ResetCommandPool( VK_GetPrimaryCommandPool() );
 }
 

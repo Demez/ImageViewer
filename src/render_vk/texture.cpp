@@ -366,6 +366,8 @@ TextureVK* VK_CreateTexture( ImageInfo* spImageInfo, const std::vector< char >& 
 
 void VK_DestroyTexture( TextureVK* srTexture )
 {
+	VK_WaitForPresentQueue();
+
 	vkDestroyImageView( VK_GetDevice(), srTexture->aImageView, nullptr );
 	vkDestroyImage( VK_GetDevice(), srTexture->aImage, nullptr );
 
@@ -558,8 +560,7 @@ RenderTarget* CreateBackBuffer()
 	allocInfo.memoryTypeIndex      = VK_GetMemoryType( memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
 	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &colorTex->aMemory ), "Failed to allocate color image memory!" );
-
-	vkBindImageMemory( VK_GetDevice(), colorTex->aImage, colorTex->aMemory, 0 );
+	VK_CheckResult( vkBindImageMemory( VK_GetDevice(), colorTex->aImage, colorTex->aMemory, 0 ), "Failed to bind color image memory" );
 
 	VkImageViewCreateInfo colorView;
 	colorView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -602,16 +603,15 @@ RenderTarget* CreateBackBuffer()
 	depth.pQueueFamilyIndices   = nullptr;
 	depth.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	VK_CheckResult( vkCreateImage( VK_GetDevice(), &depth, nullptr, &depthTex->aImage ), "Failed to create depth image!" );
+	VK_CheckResult( vkCreateImage( VK_GetDevice(), &depth, nullptr, &depthTex->aImage ), "Failed to create depth image" );
 
 	vkGetImageMemoryRequirements( VK_GetDevice(), depthTex->aImage, &memReqs );
 
 	allocInfo.allocationSize  = memReqs.size;
 	allocInfo.memoryTypeIndex = VK_GetMemoryType( memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
-	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &depthTex->aMemory ), "Failed to allocate depth image memory!" );
-
-	vkBindImageMemory( VK_GetDevice(), depthTex->aImage, depthTex->aMemory, 0 );
+	VK_CheckResult( vkAllocateMemory( VK_GetDevice(), &allocInfo, nullptr, &depthTex->aMemory ), "Failed to allocate depth image memory" );
+	VK_CheckResult( vkBindImageMemory( VK_GetDevice(), depthTex->aImage, depthTex->aMemory, 0 ), "Failed to bind depth image memory" );
 
 	VkImageViewCreateInfo depthView;
 	depthView.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -627,7 +627,7 @@ RenderTarget* CreateBackBuffer()
 	depthView.subresourceRange.baseArrayLayer = 0;
 	depthView.subresourceRange.layerCount     = 1;
 
-	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &depthView, nullptr, &depthTex->aImageView ), "Failed to create depth image view!" );
+	VK_CheckResult( vkCreateImageView( VK_GetDevice(), &depthView, nullptr, &depthTex->aImageView ), "Failed to create depth image view" );
 
 	RenderTarget* rt = VK_CreateRenderTarget( { colorTex, depthTex }, VK_GetSwapExtent().width, VK_GetSwapExtent().height, VK_GetSwapImageViews() );
 

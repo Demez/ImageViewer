@@ -4,13 +4,11 @@
 
 #include "render_vk.h"
 
-#include <algorithm>
-
 
 static VkSurfaceFormatKHR         gSurfaceFormat;
 static VkPresentModeKHR           gPresentMode;
 static VkExtent2D                 gExtent;
-static VkSwapchainKHR             gSwapChain;
+static VkSwapchainKHR             gSwapChain = nullptr;
 static std::vector< VkImage >     gImages;
 static std::vector< VkImageView > gImageViews;
 
@@ -18,76 +16,35 @@ static std::vector< VkImageView > gImageViews;
 // constexpr VkFormat                gColorFormat = VK_FORMAT_B8G8R8A8_SRGB;
 // constexpr VkColorSpaceKHR         gColorSpace  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-constexpr VkFormat                gColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
-constexpr VkColorSpaceKHR         gColorSpace  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+VkFormat                gColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
+VkColorSpaceKHR         gColorSpace  = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
 
-VkSurfaceFormatKHR ChooseSwapSurfaceFormat( const std::vector< VkSurfaceFormatKHR >& srAvailableFormats )
+void VK_CreateSwapchain( VkSwapchainKHR spOldSwapchain )
 {
-	for ( const auto& availableFormat : srAvailableFormats )
-	{
-		if ( availableFormat.format == gColorFormat && availableFormat.colorSpace == gColorSpace )
-		{
-			return availableFormat;
-		}
-	}
-	return srAvailableFormats[ 0 ];
-}
+	auto swapCapabilities = VK_GetSwapCapabilities();
+	gSurfaceFormat        = VK_ChooseSwapSurfaceFormat();
+	gPresentMode          = VK_ChooseSwapPresentMode();
+	gExtent               = VK_ChooseSwapExtent();
 
+	uint32_t imageCount   = swapCapabilities.minImageCount;
 
-VkPresentModeKHR ChooseSwapPresentMode( const std::vector< VkPresentModeKHR >& srAvailablePresentModes )
-{
-	// if ( !GetOption( "VSync" ) )
-	 	return VK_PRESENT_MODE_IMMEDIATE_KHR;
+	if ( swapCapabilities.maxImageCount > 0 && imageCount > swapCapabilities.maxImageCount )
+		imageCount = swapCapabilities.maxImageCount;
 
-	for ( const auto& availablePresentMode : srAvailablePresentModes )
-	{
-		if ( availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR )
-			return availablePresentMode;
-	}
-	return VK_PRESENT_MODE_FIFO_KHR;
-}
-
-
-VkExtent2D ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& srCapabilities )
-{
-	// TODO: probably use gWidth and gHeight instead, not sure how this would behave on linux lol
-	if ( srCapabilities.currentExtent.width != UINT32_MAX )
-		return srCapabilities.currentExtent;
-
-	VkExtent2D size{
-		std::max( srCapabilities.minImageExtent.width, std::min( srCapabilities.maxImageExtent.width, (u32)gWidth ) ),
-		std::max( srCapabilities.minImageExtent.height, std::min( srCapabilities.maxImageExtent.height, (u32)gHeight ) ),
-	};
-
-	return size;
-}
-
-
-void VK_CreateSwapchain()
-{
-	SwapChainSupportInfo swapChainSupport;
-	VK_CheckSwapChainSupport( VK_GetPhysicalDevice(), swapChainSupport );
-
-	gSurfaceFormat        = ChooseSwapSurfaceFormat( swapChainSupport.aFormats );
-	gPresentMode          = ChooseSwapPresentMode( swapChainSupport.aPresentModes );
-	gExtent               = ChooseSwapExtent( swapChainSupport.aCapabilities );
-
-	uint32_t imageCount   = swapChainSupport.aCapabilities.minImageCount;
-
-	if ( swapChainSupport.aCapabilities.maxImageCount > 0 && imageCount > swapChainSupport.aCapabilities.maxImageCount )
-		imageCount = swapChainSupport.aCapabilities.maxImageCount;
-
-	VkSwapchainCreateInfoKHR createInfo = {
-		.sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface          = VK_GetSurface(),
-		.minImageCount    = imageCount,
-		.imageFormat      = gSurfaceFormat.format,
-		.imageColorSpace  = gSurfaceFormat.colorSpace,
-		.imageExtent      = gExtent,
-		.imageArrayLayers = 1,
-		.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	};
+	VkSwapchainCreateInfoKHR createInfo{ VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+	createInfo.surface               = VK_GetSurface();
+	createInfo.minImageCount         = imageCount;
+	createInfo.imageFormat           = gSurfaceFormat.format;
+	createInfo.imageColorSpace       = gSurfaceFormat.colorSpace;
+	createInfo.imageExtent           = gExtent;
+	createInfo.imageArrayLayers      = 1;
+	createInfo.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	createInfo.preTransform          = swapCapabilities.currentTransform;
+	createInfo.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	createInfo.presentMode           = gPresentMode;
+	createInfo.clipped               = VK_TRUE;
+	createInfo.oldSwapchain          = spOldSwapchain;
 
 	uint32_t queueFamilyIndices[ 2 ] = { 0, 0 };
 	VK_FindQueueFamilies( VK_GetPhysicalDevice(), &queueFamilyIndices[ 0 ], &queueFamilyIndices[ 1 ] );
@@ -105,23 +62,19 @@ void VK_CreateSwapchain()
 		createInfo.pQueueFamilyIndices   = NULL;  // Optional
 	}
 
-	createInfo.preTransform   = swapChainSupport.aCapabilities.currentTransform;
-	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode    = gPresentMode;
-	createInfo.clipped        = VK_TRUE;
-	createInfo.oldSwapchain   = VK_NULL_HANDLE;
+	VK_CheckResult( vkCreateSwapchainKHR( VK_GetDevice(), &createInfo, NULL, &gSwapChain ), "Failed to create swapchain" );
 
-	VK_CheckResult( vkCreateSwapchainKHR( VK_GetDevice(), &createInfo, NULL, &gSwapChain ), "Failed to create swap chain!" );
+	if ( spOldSwapchain )
+		vkDestroySwapchainKHR( VK_GetDevice(), spOldSwapchain, NULL );
 
-	vkGetSwapchainImagesKHR( VK_GetDevice(), gSwapChain, &imageCount, NULL );
+	VK_CheckResult( vkGetSwapchainImagesKHR( VK_GetDevice(), gSwapChain, &imageCount, NULL ), "Failed to get swapchain images" );
 	gImages.resize( imageCount );
-	vkGetSwapchainImagesKHR( VK_GetDevice(), gSwapChain, &imageCount, gImages.data() );
+	VK_CheckResult( vkGetSwapchainImagesKHR( VK_GetDevice(), gSwapChain, &imageCount, gImages.data() ), "Failed to get swapchain images" );
 
 	gImageViews.resize( gImages.size() );
 	for ( int i = 0; i < gImages.size(); ++i )
 	{
-		VkImageViewCreateInfo aImageViewInfo           = {};
-		aImageViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		VkImageViewCreateInfo aImageViewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		aImageViewInfo.pNext                           = nullptr;
 		aImageViewInfo.flags                           = 0;
 		aImageViewInfo.image                           = gImages[ i ];
@@ -137,13 +90,15 @@ void VK_CreateSwapchain()
 		aImageViewInfo.subresourceRange.baseArrayLayer = 0;
 		aImageViewInfo.subresourceRange.layerCount     = 1;
 
-		VK_CheckResult( vkCreateImageView( VK_GetDevice(), &aImageViewInfo, nullptr, &gImageViews[ i ] ), "Failed to create image view!" );
+		VK_CheckResult( vkCreateImageView( VK_GetDevice(), &aImageViewInfo, nullptr, &gImageViews[ i ] ), "Failed to create image view" );
 	}
 }
 
 
 void VK_DestroySwapchain()
 {
+	VK_WaitForPresentQueue();
+
 	for ( auto& imgView : gImageViews )
 		vkDestroyImageView( VK_GetDevice(), imgView, nullptr );
 	
@@ -153,6 +108,18 @@ void VK_DestroySwapchain()
 	gImages.clear();  // destroyed with vkDestroySwapchainKHR
 
 	gSwapChain = nullptr;
+}
+
+
+void VK_RecreateSwapchain()
+{
+	VK_WaitForPresentQueue();
+
+	for ( auto& imgView : gImageViews )
+		vkDestroyImageView( VK_GetDevice(), imgView, nullptr );
+
+	VK_UpdateSwapchainInfo();
+	VK_CreateSwapchain( gSwapChain );
 }
 
 

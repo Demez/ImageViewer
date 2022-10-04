@@ -314,6 +314,8 @@ bool Render_Init( void* spWindow )
 
 void Render_Shutdown()
 {
+	VK_WaitForPresentQueue();
+
 	ImGui_ImplVulkan_Shutdown();
 
 	VK_DestroySwapchain();
@@ -330,7 +332,6 @@ void Render_Shutdown()
 	VK_DestroySemaphores();
 	VK_DestroyCommandPool( VK_GetSingleTimeCommandPool() );
 	VK_DestroyCommandPool( VK_GetPrimaryCommandPool() );
-	VK_DestroySurface();
 	VK_DestroyDescSets();
 
 	VK_DestroyInstance();
@@ -339,18 +340,10 @@ void Render_Shutdown()
 
 void VK_Reset()
 {
-	VK_DestroySwapchain();
+	VK_RecreateSwapchain();
 
+	// recreate backbuffer
 	VK_DestroyRenderTargets();
-	VK_DestroyRenderPasses();
-
-	// ----------------------
-	// recreate resources
-
-	VK_CreateSwapchain();
-	
-	// recreate main renderpass and backbuffer
-	VK_GetRenderPass();
 	VK_GetBackBuffer();
 }
 
@@ -416,10 +409,16 @@ void Render_DrawImage( ImageInfo* spInfo, const ImageDrawInfo& srDrawInfo )
 }
 
 
+// TODO: add flags for this to tell it whether it just stays on the gpu, or comes back to the cpu
+// probably only to store in the thumbnail cache
 void Render_DownscaleImage( ImageInfo* spInfo, const ivec2& srDestSize )
 {
 	VK_AddFilterTask( spInfo, srDestSize );
 }
+
+
+// DownscaleState Render_GetDownscaledImageState( ImageInfo* spInfo );
+// void           Render_GetDownscaledImageData( ImageInfo* spInfo, std::vector< char >& srData );
 
 
 void* Render_GetImageSurface( ImageInfo* spInfo )
