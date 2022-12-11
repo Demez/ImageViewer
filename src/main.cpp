@@ -312,6 +312,9 @@ void Main_VoidContextMenu()
 	{
 		auto sortMode = ImageList_GetSortMode();
 
+		if ( ImGui::MenuItem( "None", nullptr, sortMode == FileSort_None, ImageList_InFolder() ) )
+			ImageList_SetSortMode( FileSort_None );
+
 		if ( ImGui::MenuItem( "File Name - A to Z", nullptr, sortMode == FileSort_AZ, false ) )
 			ImageList_SetSortMode( FileSort_AZ );
 
@@ -321,7 +324,7 @@ void Main_VoidContextMenu()
 		if ( ImGui::MenuItem( "Date Modified - Newest First", nullptr, sortMode == FileSort_DateModNewest, ImageList_InFolder() ) )
 			ImageList_SetSortMode( FileSort_DateModNewest );
 
-		if( ImGui::MenuItem( "Date Modified - Oldest First", nullptr, sortMode == FileSort_DateModOldest, ImageList_InFolder() ) )
+		if ( ImGui::MenuItem( "Date Modified - Oldest First", nullptr, sortMode == FileSort_DateModOldest, ImageList_InFolder() ) )
 			ImageList_SetSortMode( FileSort_DateModOldest );
 
 		if ( ImGui::MenuItem( "Date Created - Newest First", nullptr, sortMode == FileSort_DateCreatedNewest, ImageList_InFolder() ) )
@@ -524,7 +527,7 @@ int entry()
 		ImageList_Update();
 		ImageView_Update();
 
-		if ( Plat_WindowShown() && gShouldDraw )
+		if ( Plat_WindowShown() && gShouldDraw && !Plat_WindowMinimized() )
 		// if ( Plat_WindowShown() )
 			Main_WindowDraw();
 

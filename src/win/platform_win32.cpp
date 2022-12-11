@@ -200,7 +200,7 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 		case WM_MOUSEWHEEL:
 		{
 			WORD fwKeys  = GET_KEYSTATE_WPARAM( wParam );
-			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam ) / 120;
+			gMouseScroll += GET_WHEEL_DELTA_WPARAM( wParam ) / WHEEL_DELTA;
 			break;
 		}
 
@@ -287,6 +287,7 @@ LRESULT WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 	{
 		case WM_MOUSEMOVE:
 		case WM_MOUSEWHEEL:
+		case WM_MOUSELEAVE:
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
@@ -347,12 +348,6 @@ void Plat_GetMousePos( int& xrel, int& yrel )
 char Plat_GetMouseScroll()
 {
 	return gMouseScroll;
-}
-
-
-void Plat_SetMouseCapture( bool capture )
-{
-
 }
 
 
@@ -592,8 +587,8 @@ void Plat_SetWindowTitle( const uchar* spTitle )
 
 void Plat_SetMinWindowSize( int sWidth, int sHeight )
 {
-	gMinWidth = sWidth;
-	gMinWidth = sHeight;
+	gMinWidth  = sWidth;
+	gMinHeight = sHeight;
 }
 
 
@@ -612,6 +607,12 @@ bool Plat_WindowShown()
 bool Plat_WindowFocused()
 {
 	return gWindowFocused;
+}
+
+
+bool Plat_WindowMinimized()
+{
+	return IsIconic( gHWND );
 }
 
 

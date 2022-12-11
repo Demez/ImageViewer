@@ -12,7 +12,7 @@ typedef void* Module;
 	#define EXT_DLL _T(".dll")
 	#define DLL_EXPORT __declspec(dllexport)
 	#define DLL_IMPORT __declspec(dllimport)
-#elif __linux__
+#elif __unix__
 	#define EXT_DLL ".so"
 	#define DLL_EXPORT __attribute__((__visibility__("default")))
 	#define DLL_IMPORT
@@ -102,8 +102,6 @@ void         Plat_GetMouseDelta( int& xrel, int& yrel );
 void         Plat_GetMousePos( int& xrel, int& yrel );
 char         Plat_GetMouseScroll();
 
-void         Plat_SetMouseCapture( bool capture );
-
 bool         Plat_IsKeyDown( Key key );    // like typing in a text box
 bool         Plat_IsKeyPressed( Key key ); // 
 
@@ -114,6 +112,7 @@ void         Plat_SetMinWindowSize( int sWidth, int sHeight );
 bool         Plat_WindowOpen();
 bool         Plat_WindowShown(); 
 bool         Plat_WindowFocused(); 
+bool         Plat_WindowMinimized(); 
 
 void         Plat_Sleep( float ms );
 
